@@ -1,0 +1,21 @@
+# Laravel Backend Ignores
+/ecommerce_backend/vendor/
+/ecommerce_backend/.env
+/ecommerce_backend/storage/*.key
+/ecommerce_backend/storage/framework/cache/*
+/ecommerce_backend/storage/framework/sessions/*
+/ecommerce_backend/storage/framework/views/*
+/ecommerce_backend/node_modules/
+
+# Flutter Frontend Ignores
+/ecommerce_frontend/.dart_tool/
+/ecommerce_frontend/.idea/
+/ecommerce_frontend/build/
+/ecommerce_frontend/.flutter-plugins
+/ecommerce_frontend/.flutter-plugins-dependencies
+/ecommerce_frontend/*.element_cache/
+
+# OS / Editor Files
+.DS_Store
+Thumbs.db
+.vscode/
