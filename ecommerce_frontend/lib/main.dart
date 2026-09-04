@@ -1,4 +1,11 @@
+import 'widgets/order_history_sheet.dart';
+import 'package:url_launcher/url_launcher.dart';
+import 'services/checkout_service.dart';
+import 'services/order_service.dart';
 import 'package:flutter/material.dart';
+import 'services/api_service.dart';
+import 'services/adapter_service.dart';
+
 
 void main() {
   runApp(const MyApp());
@@ -37,190 +44,7 @@ class CartItem {
   CartItem({required this.item, this.qty = 1});
 }
 
-final List<FoodItem> foodItemsData = [
-  const FoodItem(
-    id: 1,
-    name: 'Adobong Manok',
-    restaurant: 'Lutong Bahay ni Ate',
-    price: 89,
-    rating: 4.9,
-    sold: 1243,
-    badge: 'BESTSELLER',
-    category: 'Rice Dishes',
-    image: 'assets/food1.jpg',
-    description:
-        'A beloved Filipino classic, prepared fresh daily using traditional recipes. Rich in savory soy and garlic flavor with tender chicken pieces.',
-  ),
-  const FoodItem(
-    id: 2,
-    name: 'Sinigang na Baboy',
-    restaurant: 'Kainan sa Daan',
-    price: 130,
-    rating: 4.8,
-    sold: 876,
-    badge: 'BESTSELLER',
-    category: 'Soups',
-    image: 'assets/food2.jpg',
-    description:
-        'Tangy tamarind broth with tender pork ribs and crisp native vegetables like kangkong, radish, and string beans.',
-  ),
-  const FoodItem(
-    id: 3,
-    name: 'Lechon Kawali',
-    restaurant: 'Kuya Lechon',
-    price: 145,
-    rating: 4.9,
-    sold: 654,
-    badge: 'BESTSELLER',
-    category: 'Grilled',
-    image: 'assets/food3.jpg',
-    description:
-        'Crispy deep-fried pork belly with golden crackling skin and juicy meat inside. Served with our signature spiced liver sauce.',
-  ),
-  const FoodItem(
-    id: 4,
-    name: 'Pancit Canton',
-    restaurant: 'Mang Kanor',
-    price: 80,
-    rating: 4.8,
-    sold: 987,
-    badge: 'BESTSELLER',
-    category: 'Noodles',
-    image: 'assets/food1.jpg',
-    description:
-        'Stir-fried egg noodles tossed with fresh market vegetables, tender pork strips, and juicy shrimp.',
-  ),
-  const FoodItem(
-    id: 5,
-    name: 'Crispy Pata',
-    restaurant: 'Kuya Lechon',
-    price: 280,
-    rating: 4.9,
-    sold: 312,
-    badge: 'BESTSELLER',
-    category: 'Grilled',
-    image: 'assets/food2.jpg',
-    description:
-        'Whole pork knuckle deep-fried to maximum crunchiness. Best paired with our special chili soy-vinegar dip.',
-  ),
-  const FoodItem(
-    id: 6,
-    name: 'Bulalo',
-    restaurant: 'Kainan sa Daan',
-    price: 195,
-    rating: 4.9,
-    sold: 567,
-    badge: 'BESTSELLER',
-    category: 'Soups',
-    image: 'assets/food3.jpg',
-    description:
-        'Slow-simmered beef shank and bone marrow stew with sweet corn on the cob, cabbage, and pechay.',
-  ),
-  const FoodItem(
-    id: 7,
-    name: 'Bistek Tagalog',
-    restaurant: 'Lutong Bahay ni Ate',
-    price: 135,
-    rating: 4.7,
-    sold: 521,
-    badge: '',
-    category: 'Rice Dishes',
-    image: 'assets/food1.jpg',
-    description:
-        'Thinly sliced beef sirloin marinated in citrusy kalamansi and soy sauce, topped with abundant caramelized sweet onion rings.',
-  ),
-  const FoodItem(
-    id: 8,
-    name: 'Pinakbet',
-    restaurant: 'Mang Kanor',
-    price: 95,
-    rating: 4.6,
-    sold: 389,
-    badge: '',
-    category: 'Rice Dishes',
-    image: 'assets/food2.jpg',
-    description:
-        'Medley of local squash, bitter melon, eggplant, and okra stewed in fragrant fermented shrimp paste and crispy pork cracklings.',
-  ),
-  const FoodItem(
-    id: 9,
-    name: 'Pork Nilaga',
-    restaurant: 'Kainan sa Daan',
-    price: 120,
-    rating: 4.8,
-    sold: 445,
-    badge: '',
-    category: 'Soups',
-    image: 'assets/food3.jpg',
-    description:
-        'Clean, comforting pork soup boiled with potatoes, green saba bananas, and fresh leafy greens.',
-  ),
-  const FoodItem(
-    id: 10,
-    name: 'Pancit Bihon',
-    restaurant: 'Mang Kanor',
-    price: 75,
-    rating: 4.7,
-    sold: 678,
-    badge: '',
-    category: 'Noodles',
-    image: 'assets/food1.jpg',
-    description:
-        'Delicate rice vermicelli noodles sautéed with seasoned pork, chicken, and shredded crisp cabbage.',
-  ),
-  const FoodItem(
-    id: 11,
-    name: 'Kare-Kare',
-    restaurant: 'Lutong Bahay ni Ate',
-    price: 160,
-    rating: 4.7,
-    sold: 432,
-    badge: '',
-    category: 'Rice Dishes',
-    image: 'assets/food2.jpg',
-    description:
-        'Hearty stew in rich peanut sauce with tender beef, tripe, eggplant, and banana blossom. Served with authentic bagoong alamang.',
-  ),
-  const FoodItem(
-    id: 12,
-    name: 'Liempo Inihaw',
-    restaurant: 'Kuya Lechon',
-    price: 150,
-    rating: 4.8,
-    sold: 734,
-    badge: 'BESTSELLER',
-    category: 'Grilled',
-    image: 'assets/food3.jpg',
-    description:
-        'Marinated pork belly grilled over charcoal to smoky perfection, basted with sweet-savory barbecue glaze.',
-  ),
-  const FoodItem(
-    id: 13,
-    name: 'Dinuguan',
-    restaurant: 'Lutong Bahay ni Ate',
-    price: 85,
-    rating: 4.6,
-    sold: 298,
-    badge: '',
-    category: 'Rice Dishes',
-    image: 'assets/food1.jpg',
-    description:
-        'Rich and savory pork stew simmered in spiced vinegar and pork blood with green finger chilies.',
-  ),
-  const FoodItem(
-    id: 14,
-    name: 'Palabok',
-    restaurant: 'Mang Kanor',
-    price: 90,
-    rating: 4.7,
-    sold: 412,
-    badge: 'NEW',
-    category: 'Noodles',
-    image: 'assets/food2.jpg',
-    description:
-        'Thick rice noodles smothered in golden shrimp gravy, topped with crushed chicharon, hard-boiled eggs, toasted garlic, and scallions.',
-  ),
-];
+List<FoodItem> foodItemsData = [];
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -255,6 +79,41 @@ class HomeScreen extends StatefulWidget {
 }
 
 class _HomeScreenState extends State<HomeScreen> {
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchProducts();
+  }
+
+  Future<void> _fetchProducts() async {
+    try {
+      final products = await ApiService.getProducts();
+      setState(() {
+        foodItemsData = products.map((p) {
+          final mapped = AdapterService.convertProductToFoodItem(p);
+          return FoodItem(
+            id: mapped['id'],
+            name: mapped['name'],
+            restaurant: mapped['restaurant'],
+            price: mapped['price'],
+            rating: mapped['rating'],
+            sold: mapped['sold'],
+            badge: mapped['badge'],
+            category: mapped['category'],
+            image: mapped['image'],
+            description: mapped['description'],
+          );
+        }).toList();
+        isLoading = false;
+      });
+    } catch (e) {
+      print('Load error: ');
+      setState(() => isLoading = false);
+    }
+  }
+
   static const Color brandColor = Color(0xFFE8411E);
 
   final List<String> categories = const [
@@ -355,22 +214,80 @@ class _HomeScreenState extends State<HomeScreen> {
               _removeFromCart(id);
               setSheetState(() {});
             },
-            onCheckout: () {
-              Navigator.pop(ctx);
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text('Order placed successfully! 🚀'),
-                  backgroundColor: Colors.green,
-                  behavior: SnackBarBehavior.floating,
-                ),
+            onCheckout: () async {
+              if (_cart.isEmpty) return;
+              
+              final orderItems = _cart.map((c) => {
+                'id': c.item.id,
+                'qty': c.qty,
+              }).toList();
+              
+              showDialog(
+                context: context,
+                barrierDismissible: false,
+                builder: (_) => const Center(child: CircularProgressIndicator()),
               );
-              setState(() {
-                _cart.clear();
-              });
+              
+              try {
+                final result = await CheckoutService.submitOrder(
+                  items: orderItems,
+                  paymentMethod: 'gcash', 
+                  customerName: 'Demo Customer',
+                  customerPhone: '09123456789',
+                  deliveryAddress: 'Dasmariñas, Cavite',
+                );
+                
+                Navigator.pop(context);
+                Navigator.pop(ctx);
+                
+                setState(() => _cart.clear());
+                
+                if (result.containsKey('checkout_url')) {
+                    final uri = Uri.parse(result['checkout_url']);
+                    if(await canLaunchUrl(uri)) {
+                        await launchUrl(uri, mode: LaunchMode.externalApplication);
+                    } else {
+                        // Fallback UI
+                        ScaffoldMessenger.of(context).showSnackBar(
+                           SnackBar(
+                            content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
+                            backgroundColor: Colors.green,
+                          ),
+                        );
+                    }
+                } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
+                        backgroundColor: Colors.green,
+                        behavior: SnackBarBehavior.floating,
+                      ),
+                    );
+                }
+                
+              } catch(e) {
+                 Navigator.pop(context); 
+                 ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Failed to process payment. Please try again!'),
+                      backgroundColor: Colors.red,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
+              }
             },
           );
         },
       ),
+    );
+  }
+
+  void _showOrdersModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) => const OrderHistorySheet(),
     );
   }
 
@@ -379,18 +296,13 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const _ProfileBottomSheet(),
+      builder: (ctx) => _ProfileBottomSheet(
+        
+      ),
     );
   }
 
-  void _showNearbyModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => const _NearbyRestaurantsBottomSheet(),
-    );
-  }
+  
 
   @override
   Widget build(BuildContext context) {
@@ -400,7 +312,9 @@ class _HomeScreenState extends State<HomeScreen> {
     return Scaffold(
       backgroundColor: Colors.white,
       body: SafeArea(
-        child: Column(
+        child: isLoading 
+            ? const Center(child: CircularProgressIndicator()) 
+            : Column(
           children: [
             // Top Header
             _buildTopHeader(isDesktop),
@@ -931,7 +845,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
               ),
               TextButton(
-                onPressed: _showNearbyModal,
+                onPressed: () {},
                 style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
                 child: const Text('See all →', style: TextStyle(color: brandColor, fontSize: 12, fontWeight: FontWeight.w600)),
               ),
@@ -951,7 +865,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 width: 145,
                 margin: const EdgeInsets.only(right: 12),
                 child: InkWell(
-                  onTap: _showNearbyModal,
+                  onTap: () {},
                   borderRadius: BorderRadius.circular(14),
                   child: Container(
                     decoration: BoxDecoration(
@@ -1604,77 +1518,69 @@ class _CartBottomSheet extends StatelessWidget {
   }
 }
 
-class _ProfileBottomSheet extends StatelessWidget {
+class _ProfileBottomSheet extends StatefulWidget {
   const _ProfileBottomSheet();
+  @override
+  State<_ProfileBottomSheet> createState() => _ProfileBottomSheetState();
+}
 
-  static const Color brandColor = Color(0xFFE8411E);
+class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
+  List<dynamic> myOrders = [];
+  bool isLoading = true;
 
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(width: 36, height: 4, decoration: BoxDecoration(color: const Color(0xFFE5E7EB), borderRadius: BorderRadius.circular(2))),
-          const SizedBox(height: 16),
-          Row(
+  void initState() {
+    super.initState();
+    _fetchOrders();
+  }
+
+  Future<void> _fetchOrders() async {
+    final result = await OrderService.getOrderHistory();
+    if(mounted) {
+        setState(() {
+          myOrders = result;
+          isLoading = false;
+        });
+    }
+  }
+
+  void _showReviewDialog(int orderId) {
+    TextEditingController _comment = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: const Text('Leave a Review'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Container(
-                width: 48,
-                height: 48,
-                decoration: const BoxDecoration(color: Color(0xFFF3F4F6), shape: BoxShape.circle),
-                child: const Icon(Icons.person, color: Color(0xFF9CA3AF), size: 28),
-              ),
-              const SizedBox(width: 14),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text('Guest User', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-                  Text('Sign in / Register →', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: brandColor)),
-                ],
-              ),
+              Text('How was your order?'),
+              const SizedBox(height: 10),
+              TextField(
+                controller: _comment,
+                decoration: const InputDecoration(
+                   hintText: 'Great food, arrived hot!',
+                   border: OutlineInputBorder(),
+                ),
+                maxLines: 2,
+              )
             ],
           ),
-          const SizedBox(height: 16),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
-          const SizedBox(height: 8),
-          _buildMenuItem(Icons.receipt_long_outlined, 'My Orders', () => Navigator.pop(context)),
-          _buildMenuItem(Icons.location_on_outlined, 'Saved Addresses', () => Navigator.pop(context)),
-          _buildMenuItem(Icons.favorite_outline, 'Saved Items', () => Navigator.pop(context)),
-          _buildMenuItem(Icons.settings_outlined, 'Settings', () => Navigator.pop(context)),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
-          const SizedBox(height: 4),
-          _buildMenuItem(Icons.logout, 'Sign Out', () => Navigator.pop(context), isDestructive: true),
-        ],
-      ),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancel')),
+            ElevatedButton(
+               onPressed: () async {
+                   Navigator.pop(ctx);
+                   await OrderService.submitReview(orderId, 5, _comment.text);
+                   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Review Submitted! Thank you.')));
+               }, 
+               child: const Text('Submit')
+            )
+          ],
+        )
+      )
     );
   }
-
-  Widget _buildMenuItem(IconData icon, String label, VoidCallback onTap, {bool isDestructive = false}) {
-    return ListTile(
-      leading: Icon(icon, color: isDestructive ? brandColor : const Color(0xFF4B5563), size: 22),
-      title: Text(
-        label,
-        style: TextStyle(
-          fontSize: 14,
-          fontWeight: isDestructive ? FontWeight.bold : FontWeight.w500,
-          color: isDestructive ? brandColor : const Color(0xFF1F2937),
-        ),
-      ),
-      contentPadding: EdgeInsets.zero,
-      dense: true,
-      onTap: onTap,
-    );
-  }
-}
-
-class _NearbyRestaurantsBottomSheet extends StatelessWidget {
-  const _NearbyRestaurantsBottomSheet();
 
   @override
   Widget build(BuildContext context) {
@@ -1683,77 +1589,75 @@ class _NearbyRestaurantsBottomSheet extends StatelessWidget {
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+      padding: const EdgeInsets.all(20),
+      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text('Nearby Restaurants', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
-                IconButton(
-                  onPressed: () => Navigator.pop(context),
-                  icon: const Icon(Icons.close, size: 20),
-                ),
-              ],
-            ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+               const Text('👤 Profile & Orders', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+               IconButton(icon: const Icon(Icons.close), onPressed: () => Navigator.pop(context)),
+            ]
           ),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
+          const Divider(),
+          const Text('Live Delivery Tracking & History', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey)),
+          const SizedBox(height: 10),
           Expanded(
-            child: ListView.separated(
-              padding: const EdgeInsets.all(16),
-              itemCount: 6,
-              separatorBuilder: (_, _) => const SizedBox(height: 12),
-              itemBuilder: (context, index) {
-                final names = ['Lutong Bahay ni Ate', 'Kainan sa Daan', 'Kuya Lechon', 'Mang Kanor', 'Nanay’s Grill', 'Cavite Express'];
-                return Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF3F4F6)),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 50,
-                        height: 50,
-                        decoration: BoxDecoration(
-                          color: Colors.grey.shade200,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Icon(Icons.restaurant, color: Colors.grey.shade400),
-                      ),
-                      const SizedBox(width: 14),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(names[index], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF1F2937))),
-                            const SizedBox(height: 2),
-                            const Text('Filipino · Rice Dishes · Soups', style: TextStyle(fontSize: 11, color: Color(0xFF9CA3AF))),
-                            const SizedBox(height: 4),
-                            Row(
-                              children: const [
-                                Icon(Icons.star, color: Colors.amber, size: 12),
-                                SizedBox(width: 2),
-                                Text('4.8 (250+)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF4B5563))),
-                                SizedBox(width: 8),
-                                Text('· 1.2 km · 20-30 mins', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF))),
-                              ],
+            child: isLoading 
+              ? const Center(child: CircularProgressIndicator()) 
+              : myOrders.isEmpty 
+                  ? const Center(child: Text('No orders found.')) 
+                  : ListView.builder(
+                      itemCount: myOrders.length,
+                      itemBuilder: (context, index) {
+                         final o = myOrders[index];
+                         return Container(
+                            margin: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                               border: Border.all(color: Colors.grey.shade300),
+                               borderRadius: BorderRadius.circular(12)
                             ),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          ),
+                            child: Column(
+                               crossAxisAlignment: CrossAxisAlignment.start,
+                               children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(o['order_number'].toString(), style: const TextStyle(fontWeight: FontWeight.bold)),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                        decoration: BoxDecoration(
+                                          color: o['status'] == 'completed' ? Colors.green.shade100 : Colors.orange.shade100,
+                                          borderRadius: BorderRadius.circular(8)
+                                        ),
+                                        child: Text(o['status'].toString().toUpperCase(), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold))
+                                      )
+                                    ]
+                                  ),
+                                  const SizedBox(height: 6),
+                                  Text('Total: ₱' + o['total_amount'].toString(), style: const TextStyle(color: Color(0xFFE8411E), fontWeight: FontWeight.bold)),
+                                  if (o['status'] == 'completed') ...[
+                                      const SizedBox(height: 8),
+                                      SizedBox(
+                                        width: double.infinity,
+                                        child: OutlinedButton(
+                                           onPressed: () => _showReviewDialog(o['id']),
+                                           child: const Text('Leave a Review (5⭐)')
+                                        )
+                                      )
+                                  ]
+                               ]
+                            )
+                         );
+                      }
+                  )
+          )
         ],
       ),
     );
   }
 }
+// END OF FILE
