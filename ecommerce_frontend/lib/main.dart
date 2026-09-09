@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'auth/login_page.dart';
 
 void main() {
   runApp(const MyApp());
@@ -160,6 +161,17 @@ class CustomAppBar extends StatelessWidget {
                   borderRadius: BorderRadius.circular(24),
                 ),
               ),
+            ),
+            const SizedBox(width: 12),
+            TextButton.icon(
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const LoginPage()),
+                );
+              },
+              icon: const Icon(Icons.login, size: 18, color: Colors.black87),
+              label: const Text('Log In', style: TextStyle(color: Colors.black87)),
             ),
           ],
         ),
