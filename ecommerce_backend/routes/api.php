@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Category;
 use App\Models\Product;
 use App\Models\Order;
+use App\Http\Controllers\Api\QrPaymentController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -34,21 +35,16 @@ Route::get('/products/{slug}', function ($slug) {
         ->firstOrFail();
 });
 
-// Phase 3: Checkout & Payment Gateway Endpoints
+// Phase 3: Checkout, Dynamic QR & Payment Gateway Endpoints
 Route::post('/checkout', [\App\Http\Controllers\Api\CheckoutController::class, 'store']);
+Route::post('/payments/qr-confirm', [QrPaymentController::class, 'confirm']);
 Route::post('/webhooks/paymongo', [\App\Http\Controllers\Api\WebhookController::class, 'handlePaymongo']);
 
 // Phase 4: Customer Order History & Real-Time Tracking
-Route::get('/orders', function () {
-    return Order::with(['items', 'latestPayment'])
-        ->latest()
-        ->get();
-});
-
+Route::get('/orders', [\App\Http\Controllers\Api\OrderHistoryController::class, 'index']);
 Route::get('/orders/track/{order_number}', function ($order_number) {
     return Order::with(['items', 'latestPayment'])
         ->where('order_number', $order_number)
         ->firstOrFail();
 });
-Route::get('/orders', [\App\Http\Controllers\Api\OrderHistoryController::class, 'index']);
 Route::post('/orders/reviews', [\App\Http\Controllers\Api\OrderHistoryController::class, 'storeReview']);

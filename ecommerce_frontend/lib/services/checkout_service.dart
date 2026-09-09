@@ -32,4 +32,29 @@ class CheckoutService {
       throw Exception('Checkout failed: $e');
     }
   }
+
+  /// Confirm payment once QR is scanned/paid by the customer
+  static Future<Map<String, dynamic>> confirmQrPayment({
+    required String orderNumber,
+    String? referenceNumber,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${ApiService.baseUrl}/payments/qr-confirm'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: json.encode({
+          'order_number': orderNumber,
+          'reference_number': referenceNumber ?? 'QR-REF-${DateTime.now().millisecondsSinceEpoch}',
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Server returned ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      throw Exception('QR Payment confirmation failed: $e');
+    }
+  }
 }

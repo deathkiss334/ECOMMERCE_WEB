@@ -1,3 +1,4 @@
+import 'widgets/qr_payment_modal.dart';
 import 'widgets/order_history_sheet.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'services/checkout_service.dart';
@@ -242,27 +243,31 @@ class _HomeScreenState extends State<HomeScreen> {
                 
                 setState(() => _cart.clear());
                 
-                if (result.containsKey('checkout_url')) {
-                    final uri = Uri.parse(result['checkout_url']);
-                    if(await canLaunchUrl(uri)) {
-                        await launchUrl(uri, mode: LaunchMode.externalApplication);
-                    } else {
-                        // Fallback UI
-                        ScaffoldMessenger.of(context).showSnackBar(
-                           SnackBar(
-                            content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
-                            backgroundColor: Colors.green,
-                          ),
-                        );
-                    }
+                if (result.containsKey('qr_image_url')) {
+                  showDialog(
+                    context: context,
+                    builder: (_) => QrPaymentModal(
+                      orderNumber: result['order_number'],
+                      totalAmount: (result['total_amount'] as num).toDouble(),
+                      qrImageUrl: result['qr_image_url'],
+                      onPaymentComplete: () {
+                        _showOrdersModal();
+                      },
+                    ),
+                  );
+                } else if (result.containsKey('checkout_url')) {
+                  final uri = Uri.parse(result['checkout_url']);
+                  if (await canLaunchUrl(uri)) {
+                    await launchUrl(uri, mode: LaunchMode.externalApplication);
+                  }
                 } else {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
-                        backgroundColor: Colors.green,
-                        behavior: SnackBarBehavior.floating,
-                      ),
-                    );
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(
+                      content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
+                      backgroundColor: Colors.green,
+                      behavior: SnackBarBehavior.floating,
+                    ),
+                  );
                 }
                 
               } catch(e) {

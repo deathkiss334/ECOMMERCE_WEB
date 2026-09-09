@@ -70,7 +70,7 @@ class CheckoutController extends Controller
                 'id' => (string) Str::uuid(),
                 'order_id' => $order->id,
                 'payment_method' => $validated['payment_method'],
-                'gateway' => clone($validated['payment_method']) === 'cod' ? 'cod' : 'paymongo',
+                'gateway' => $validated['payment_method'] === 'cod' ? 'cod' : 'qr_payment',
                 'amount' => $totalAmount,
                 'status' => 'pending',
             ]);
@@ -85,47 +85,23 @@ class CheckoutController extends Controller
                 return response()->json([
                     'success' => true,
                     'order_number' => $order->order_number,
+                    'total_amount' => $totalAmount,
                     'message' => 'Order placed successfully via Cash on Delivery.'
                 ]);
             }
 
-            // 5B. Handle E-Wallets / Cards via PayMongo
-            $paymongoSecret = env('PAYMONGO_SECRET_KEY');
-            
-            if (!$paymongoSecret) {
-                // Seamless Mock fallback for the Live Demo format requested in the presentation outline
-                return response()->json([
-                    'success' => true,
-                    'order_number' => $order->order_number,
-                    'checkout_url' => 'https://mock-paymongo.test/checkout/' . $order->order_number,
-                    'message' => 'Mock payment link generated (Add PAYMONGO_SECRET_KEY to .env for real transactions).'
-                ]);
-            }
+            // 5B. Dynamic QR Code Payment (GCash, Maya, Any Bank App)
+            $qrData = "ORDER:{$order->order_number}|PHP:{$totalAmount}|MERCHANT:FILIPINO-CUISINE-DASMARINAS";
+            $qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($qrData);
 
-            // Real PayMongo Checkout Link Generation
-            $response = Http::withBasicAuth($paymongoSecret, '')
-                ->post('https://api.paymongo.com/v1/links', [
-                    'data' => [
-                        'attributes' => [
-                            'amount' => (int) ($totalAmount * 100), // Configured in centavos
-                            'description' => 'E-Commerce Order: ' . $order->order_number,
-                            'remarks' => $order->order_number
-                        ]
-                    ]
-                ]);
-
-            if ($response->successful()) {
-                $link = $response->json('data.attributes.checkout_url');
-                $payment->update(['gateway_reference_id' => $response->json('data.id')]);
-                
-                return response()->json([
-                    'success' => true,
-                    'order_number' => $order->order_number,
-                    'checkout_url' => $link
-                ]);
-            }
-
-            return response()->json(['error' => 'Payment gateway connection failed', 'details' => $response->json()], 500);
+            return response()->json([
+                'success' => true,
+                'order_number' => $order->order_number,
+                'total_amount' => (float)$totalAmount,
+                'payment_method' => $validated['payment_method'],
+                'qr_image_url' => $qrImageUrl,
+                'message' => 'Scan QR Code using GCash, Maya, or any mobile banking app.'
+            ]);
         });
     }
 }
