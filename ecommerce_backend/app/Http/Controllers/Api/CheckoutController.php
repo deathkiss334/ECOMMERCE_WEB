@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ProductVariant;
+use App\Services\FirebaseService;
 
 class CheckoutController extends Controller
 {
@@ -74,9 +75,13 @@ class CheckoutController extends Controller
                 'status' => 'pending',
             ]);
 
+            // Synchronize newly created order to Firebase
+            FirebaseService::syncOrder($order);
+
             // 5A. Handle Cash On Delivery
             if ($validated['payment_method'] === 'cod') {
                 $order->update(['status' => 'preparing']); // Immediately proceed with COD
+                FirebaseService::syncOrder($order);
                 return response()->json([
                     'success' => true,
                     'order_number' => $order->order_number,
