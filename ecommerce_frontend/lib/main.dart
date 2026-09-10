@@ -1146,12 +1146,15 @@ class _HomeScreenState extends State<HomeScreen> {
       child: BottomNavigationBar(
         currentIndex: _currentNavIndex,
         onTap: (index) {
-          setState(() => _currentNavIndex = index);
           if (index == 2) {
             _showCartModal();
-          } else if (index == 3) {
-            _showProfileModal();
+            return;
           }
+          if (index == 3) {
+            _showProfileModal();
+            return;
+          }
+          setState(() => _currentNavIndex = index);
         },
         selectedItemColor: brandColor,
         unselectedItemColor: const Color(0xFF9CA3AF),
