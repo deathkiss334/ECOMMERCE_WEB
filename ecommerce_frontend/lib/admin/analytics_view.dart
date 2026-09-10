@@ -47,7 +47,7 @@ class AnalyticsView extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
               ],
             ),
             child: Column(
@@ -70,7 +70,7 @@ class AnalyticsView extends StatelessWidget {
                               gradient: LinearGradient(
                                 colors: [
                                   Theme.of(context).colorScheme.primary,
-                                  Theme.of(context).colorScheme.primary.withOpacity(0.3)
+                                  Theme.of(context).colorScheme.primary.withValues(alpha: 0.3)
                                 ],
                                 begin: Alignment.bottomCenter,
                                 end: Alignment.topCenter,

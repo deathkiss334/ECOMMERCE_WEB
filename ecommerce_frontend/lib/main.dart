@@ -19,7 +19,6 @@ class MyApp extends StatelessWidget {
           seedColor: const Color(0xFFF1512F),
           primary: const Color(0xFFF1512F),
           surface: Colors.white,
-          background: const Color(0xFFFAFAFA),
         ),
         scaffoldBackgroundColor: const Color(0xFFFAFAFA),
         fontFamily: 'Roboto', // Fallback font, assume standard sans-serif
@@ -244,7 +243,7 @@ class BannersSection extends StatelessWidget {
               decoration: BoxDecoration(
                 borderRadius: BorderRadius.circular(16),
                 gradient: LinearGradient(
-                  colors: [Colors.black.withOpacity(0.8), Colors.transparent],
+                  colors: [Colors.black.withValues(alpha: 0.8), Colors.transparent],
                   begin: Alignment.centerLeft,
                   end: Alignment.centerRight,
                 ),
@@ -323,7 +322,7 @@ class BannersSection extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.orange.withOpacity(0.1),
+                            color: Colors.orange.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.egg_alt_outlined, color: Colors.orange, size: 32),
@@ -355,7 +354,7 @@ class BannersSection extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
+                            color: Colors.white.withValues(alpha: 0.2),
                             shape: BoxShape.circle,
                           ),
                           child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 32),

@@ -36,11 +36,11 @@ class ProductsView extends StatelessWidget {
               color: Colors.white,
               borderRadius: BorderRadius.circular(12),
               boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10, offset: const Offset(0, 4))
+                BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 10, offset: const Offset(0, 4))
               ],
             ),
             child: DataTable(
-              headingRowColor: MaterialStateProperty.all(const Color(0xFFF8FAFC)),
+              headingRowColor: WidgetStateProperty.all(const Color(0xFFF8FAFC)),
               columns: const [
                 DataColumn(label: Text('Product', style: TextStyle(fontWeight: FontWeight.bold))),
                 DataColumn(label: Text('Category', style: TextStyle(fontWeight: FontWeight.bold))),
