@@ -9,6 +9,12 @@ class CheckoutService {
     required String customerName,
     required String customerPhone,
     required String deliveryAddress,
+    String? firstName,
+    String? secondName,
+    String? middleName,
+    String? birthday,
+    String? emailAddress,
+    bool isVerified = false,
   }) async {
     try {
       final response = await http.post(
@@ -20,6 +26,12 @@ class CheckoutService {
           'customer_name': customerName,
           'customer_phone': customerPhone,
           'delivery_address': deliveryAddress,
+          'first_name': firstName ?? customerName,
+          'second_name': secondName ?? '',
+          'middle_name': middleName ?? '',
+          'birthday': birthday ?? '',
+          'email_address': emailAddress ?? '',
+          'is_verified': isVerified,
         }),
       );
 

@@ -1,11 +1,12 @@
 import 'widgets/qr_payment_modal.dart';
 import 'widgets/order_history_sheet.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'services/checkout_service.dart';
 import 'services/order_service.dart';
 import 'package:flutter/material.dart';
 import 'services/api_service.dart';
 import 'services/adapter_service.dart';
+import 'models/user_model.dart';
+import 'services/firebase_user_service.dart';
 
 
 void main() {
@@ -134,6 +135,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   final Set<int> _savedItemIds = {};
   final List<CartItem> _cart = [];
+  UserModel _currentUser = FirebaseUserService.currentUser;
 
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.qty);
   int get cartTotal => _cart.fold(0, (sum, item) => sum + (item.item.price * item.qty));
@@ -228,75 +230,385 @@ class _HomeScreenState extends State<HomeScreen> {
               _removeFromCart(id);
               setSheetState(() {});
             },
-            onCheckout: () async {
+            onCheckout: () {
               if (_cart.isEmpty) return;
-              
-              final orderItems = _cart.map((c) => {
-                'id': c.item.id,
-                'qty': c.qty,
-              }).toList();
-              
-              showDialog(
-                context: context,
-                barrierDismissible: false,
-                builder: (_) => const Center(child: CircularProgressIndicator()),
-              );
-              
-              try {
-                final result = await CheckoutService.submitOrder(
-                  items: orderItems,
-                  paymentMethod: 'gcash', 
-                  customerName: 'Demo Customer',
-                  customerPhone: '09123456789',
-                  deliveryAddress: 'Dasmariñas, Cavite',
-                );
-                
-                Navigator.pop(context);
-                Navigator.pop(ctx);
-                
-                setState(() => _cart.clear());
-                
-                if (result.containsKey('qr_image_url')) {
-                  showDialog(
-                    context: context,
-                    builder: (_) => QrPaymentModal(
-                      orderNumber: result['order_number'],
-                      totalAmount: (result['total_amount'] as num).toDouble(),
-                      qrImageUrl: result['qr_image_url'],
-                      onPaymentComplete: () {
-                        _showOrdersModal();
-                      },
-                    ),
-                  );
-                } else if (result.containsKey('checkout_url')) {
-                  final uri = Uri.parse(result['checkout_url']);
-                  if (await canLaunchUrl(uri)) {
-                    await launchUrl(uri, mode: LaunchMode.externalApplication);
-                  }
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Order ' + result['order_number'] + ' Placed! 🎉'),
-                      backgroundColor: Colors.green,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-                }
-                
-              } catch(e) {
-                 Navigator.pop(context); 
-                 ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Failed to process payment. Please try again!'),
-                      backgroundColor: Colors.red,
-                      behavior: SnackBarBehavior.floating,
-                    ),
-                  );
-              }
+              Navigator.pop(ctx);
+              _showCheckoutCustomerForm();
             },
           );
         },
       ),
+    );
+  }
+
+  void _showCheckoutCustomerForm() {
+    if (_cart.isEmpty) return;
+
+    final isVerified = _currentUser.isVerified;
+    final defaultUser = UserModel.defaultVerified();
+
+    final firstNameCtrl = TextEditingController(text: isVerified ? defaultUser.firstName : '');
+    final secondNameCtrl = TextEditingController(text: isVerified ? defaultUser.secondName : '');
+    final middleNameCtrl = TextEditingController(text: isVerified ? defaultUser.middleName : '');
+    final birthdayCtrl = TextEditingController(text: isVerified ? defaultUser.birthday : '');
+    final addressCtrl = TextEditingController(text: isVerified ? defaultUser.address : '');
+    final phoneCtrl = TextEditingController(text: isVerified ? defaultUser.phoneNumber : '');
+    final emailCtrl = TextEditingController(text: isVerified ? defaultUser.emailAddress : '');
+
+    bool currentVerifiedMode = isVerified;
+    String selectedPaymentMethod = 'gcash';
+
+    showDialog(
+      context: context,
+      builder: (dlgCtx) => StatefulBuilder(
+        builder: (dlgCtx, setDlgState) {
+          void toggleMode(bool verified) {
+            setDlgState(() {
+              currentVerifiedMode = verified;
+              if (verified) {
+                firstNameCtrl.text = defaultUser.firstName;
+                secondNameCtrl.text = defaultUser.secondName;
+                middleNameCtrl.text = defaultUser.middleName;
+                birthdayCtrl.text = defaultUser.birthday;
+                addressCtrl.text = defaultUser.address;
+                phoneCtrl.text = defaultUser.phoneNumber;
+                emailCtrl.text = defaultUser.emailAddress;
+              } else {
+                firstNameCtrl.clear();
+                secondNameCtrl.clear();
+                middleNameCtrl.clear();
+                birthdayCtrl.clear();
+                addressCtrl.clear();
+                phoneCtrl.clear();
+                emailCtrl.clear();
+              }
+            });
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 680),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text(
+                          'Checkout Details',
+                          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(dlgCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // User Mode Selector
+                    Container(
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF3F4F6),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      padding: const EdgeInsets.all(4),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => toggleMode(true),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: currentVerifiedMode ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: currentVerifiedMode
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                                      : [],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.verified_user,
+                                        size: 16, color: currentVerifiedMode ? brandColor : Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Verified User',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: currentVerifiedMode ? brandColor : Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: GestureDetector(
+                              onTap: () => toggleMode(false),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(vertical: 10),
+                                decoration: BoxDecoration(
+                                  color: !currentVerifiedMode ? Colors.white : Colors.transparent,
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: !currentVerifiedMode
+                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
+                                      : [],
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(Icons.person_outline,
+                                        size: 16, color: !currentVerifiedMode ? Colors.orange[800] : Colors.grey),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Guest Account',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.bold,
+                                        color: !currentVerifiedMode ? Colors.orange[800] : Colors.grey[700],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Status Notification Banner
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: currentVerifiedMode ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: currentVerifiedMode ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: Row(
+                        children: [
+                          Icon(
+                            currentVerifiedMode ? Icons.cloud_done : Icons.edit_note,
+                            size: 18,
+                            color: currentVerifiedMode ? Colors.green[800] : Colors.orange[800],
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              currentVerifiedMode
+                                  ? '✨ Profile Auto-Filled from Firebase Cloud Firestore'
+                                  : '⚠️ Guest Mode: Please manually fill in all details one by one.',
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color: currentVerifiedMode ? Colors.green[900] : Colors.orange[900],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    // Form Fields (Scrollable)
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          children: [
+                            Row(
+                              children: [
+                                Expanded(child: _buildFormField('First Name', firstNameCtrl, Icons.person)),
+                                const SizedBox(width: 10),
+                                Expanded(child: _buildFormField('Second (Last) Name', secondNameCtrl, Icons.person_outline)),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(child: _buildFormField('Middle Name', middleNameCtrl, Icons.badge)),
+                                const SizedBox(width: 10),
+                                Expanded(child: _buildFormField('Birthday (YYYY-MM-DD)', birthdayCtrl, Icons.cake)),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+                            _buildFormField('Delivery Address', addressCtrl, Icons.home),
+                            const SizedBox(height: 10),
+                            Row(
+                              children: [
+                                Expanded(child: _buildFormField('Phone Number', phoneCtrl, Icons.phone)),
+                                const SizedBox(width: 10),
+                                Expanded(child: _buildFormField('Email Address', emailCtrl, Icons.email)),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Row(
+                              children: [
+                                const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const Spacer(),
+                                ChoiceChip(
+                                  label: const Text('GCash / QR'),
+                                  selected: selectedPaymentMethod == 'gcash',
+                                  onSelected: (_) => setDlgState(() => selectedPaymentMethod = 'gcash'),
+                                  selectedColor: brandColor.withValues(alpha: 0.2),
+                                ),
+                                const SizedBox(width: 8),
+                                ChoiceChip(
+                                  label: const Text('COD'),
+                                  selected: selectedPaymentMethod == 'cod',
+                                  onSelected: (_) => setDlgState(() => selectedPaymentMethod = 'cod'),
+                                  selectedColor: brandColor.withValues(alpha: 0.2),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () async {
+                          if (firstNameCtrl.text.trim().isEmpty ||
+                              addressCtrl.text.trim().isEmpty ||
+                              phoneCtrl.text.trim().isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please fill in required fields (Name, Address, Phone)'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          final orderItems = _cart.map((c) => {'id': c.item.id, 'qty': c.qty}).toList();
+                          final customerFullName = '${firstNameCtrl.text} ${secondNameCtrl.text}'.trim();
+
+                          Navigator.pop(dlgCtx);
+
+                          showDialog(
+                            context: context,
+                            barrierDismissible: false,
+                            builder: (_) => const Center(child: CircularProgressIndicator()),
+                          );
+
+                          try {
+                            final submittedUser = UserModel(
+                              firstName: firstNameCtrl.text,
+                              secondName: secondNameCtrl.text,
+                              middleName: middleNameCtrl.text,
+                              birthday: birthdayCtrl.text,
+                              address: addressCtrl.text,
+                              phoneNumber: phoneCtrl.text,
+                              emailAddress: emailCtrl.text,
+                              isVerified: currentVerifiedMode,
+                            );
+                            setState(() => _currentUser = submittedUser);
+                            FirebaseUserService.saveUserProfileToFirebase(submittedUser);
+
+                            final result = await CheckoutService.submitOrder(
+                              items: orderItems,
+                              paymentMethod: selectedPaymentMethod,
+                              customerName: customerFullName,
+                              customerPhone: phoneCtrl.text,
+                              deliveryAddress: addressCtrl.text,
+                              firstName: firstNameCtrl.text,
+                              secondName: secondNameCtrl.text,
+                              middleName: middleNameCtrl.text,
+                              birthday: birthdayCtrl.text,
+                              emailAddress: emailCtrl.text,
+                              isVerified: currentVerifiedMode,
+                            );
+
+                            Navigator.pop(context); // Pop loading
+                            setState(() => _cart.clear());
+
+                            if (result.containsKey('qr_image_url')) {
+                              showDialog(
+                                context: context,
+                                builder: (_) => QrPaymentModal(
+                                  orderNumber: result['order_number'],
+                                  totalAmount: (result['total_amount'] as num).toDouble(),
+                                  qrImageUrl: result['qr_image_url'],
+                                  onPaymentComplete: () {
+                                    _showOrdersModal();
+                                  },
+                                ),
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Order ${result['order_number']} Placed Successfully! 🎉'),
+                                  backgroundColor: Colors.green,
+                                  behavior: SnackBarBehavior.floating,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            Navigator.pop(context); // Pop loading
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text('Checkout Error: $e'),
+                                backgroundColor: Colors.red,
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          }
+                        },
+                        child: Text(
+                          'Place Order • ₱$cartTotal',
+                          style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _buildFormField(String label, TextEditingController controller, IconData icon) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87)),
+        const SizedBox(height: 4),
+        TextField(
+          controller: controller,
+          style: const TextStyle(fontSize: 13),
+          decoration: InputDecoration(
+            isDense: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            prefixIcon: Icon(icon, size: 16, color: Colors.grey),
+            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            focusedBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: brandColor),
+            ),
+          ),
+        ),
+      ],
     );
   }
 
@@ -426,6 +738,62 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Spacer(),
+          // Account Type Selector Pill
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                if (_currentUser.isVerified) {
+                  _currentUser = UserModel.guest();
+                } else {
+                  _currentUser = UserModel.defaultVerified();
+                }
+                FirebaseUserService.setCurrentUser(_currentUser);
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(_currentUser.isVerified
+                      ? 'Switched to Verified User Mode (Juan Dela Cruz) 🛡️'
+                      : 'Switched to Guest Account Mode 👤'),
+                  duration: const Duration(seconds: 2),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: _currentUser.isVerified
+                    ? Colors.green.withValues(alpha: 0.1)
+                    : Colors.orange.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(
+                  color: _currentUser.isVerified
+                      ? Colors.green.withValues(alpha: 0.4)
+                      : Colors.orange.withValues(alpha: 0.4),
+                ),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Icon(
+                    _currentUser.isVerified ? Icons.verified : Icons.person_outline,
+                    size: 14,
+                    color: _currentUser.isVerified ? Colors.green[800] : Colors.orange[800],
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    _currentUser.isVerified ? 'Verified User' : 'Guest',
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: _currentUser.isVerified ? Colors.green[900] : Colors.orange[900],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Cart Button in Header for fast access
           Stack(
             clipBehavior: Clip.none,

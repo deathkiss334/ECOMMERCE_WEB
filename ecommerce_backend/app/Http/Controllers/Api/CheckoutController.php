@@ -25,7 +25,17 @@ class CheckoutController extends Controller
             'customer_name' => 'required|string',
             'customer_phone' => 'required|string',
             'delivery_address' => 'required|string',
+            'first_name' => 'nullable|string',
+            'second_name' => 'nullable|string',
+            'middle_name' => 'nullable|string',
+            'birthday' => 'nullable|string',
+            'email_address' => 'nullable|string',
+            'is_verified' => 'nullable|boolean',
         ]);
+
+        if (!empty($validated['is_verified'])) {
+            FirebaseService::syncUser($validated);
+        }
 
         return DB::transaction(function () use ($validated) {
             $totalAmount = 0;

@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/product_model.dart';
 import '../models/order_model.dart';
-import 'dart:io' show Platform;
 
 class ApiService {
   static String get baseUrl {

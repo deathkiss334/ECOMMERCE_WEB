@@ -92,6 +92,61 @@ class FirebaseService
     }
 
     /**
+     * Synchronize a User Profile to Firebase Cloud Firestore (users collection).
+     *
+     * @param array $userData
+     * @return bool
+     */
+    public static function syncUser(array $userData): bool
+    {
+        $projectId = config('firebase.project_id') ?: env('FIREBASE_PROJECT_ID');
+
+        if (empty($projectId) || !config('firebase.sync_enabled', true)) {
+            Log::info("Firebase user sync skipped: FIREBASE_PROJECT_ID not set");
+            return false;
+        }
+
+        $email = $userData['email_address'] ?? 'guest';
+        if (empty($email) || empty($userData['is_verified'])) {
+            return false;
+        }
+
+        try {
+            $docId = preg_replace('/[^a-zA-Z0-9]/', '_', $email);
+            $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/users/{$docId}";
+
+            $firestoreFields = [
+                'first_name' => ['stringValue' => (string)($userData['first_name'] ?? '')],
+                'second_name' => ['stringValue' => (string)($userData['second_name'] ?? '')],
+                'middle_name' => ['stringValue' => (string)($userData['middle_name'] ?? '')],
+                'birthday' => ['stringValue' => (string)($userData['birthday'] ?? '')],
+                'address' => ['stringValue' => (string)($userData['delivery_address'] ?? $userData['address'] ?? '')],
+                'phone_number' => ['stringValue' => (string)($userData['customer_phone'] ?? $userData['phone_number'] ?? '')],
+                'email_address' => ['stringValue' => (string)$email],
+                'is_verified' => ['booleanValue' => true],
+                'updated_at' => ['stringValue' => now()->toIso8601String()],
+            ];
+
+            $token = self::getAccessToken();
+            $request = Http::timeout(5);
+            if ($token) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->patch($url, ['fields' => $firestoreFields]);
+
+            if ($response->successful()) {
+                Log::info("Firebase user sync succeeded for {$email}");
+                return true;
+            }
+        } catch (\Throwable $e) {
+            Log::error("Firebase user sync exception: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
      * Retrieve OAuth2 Bearer token if a Google service account JSON file is present.
      *
      * @return string|null
