@@ -51,6 +51,69 @@ class CartItem {
 
 List<FoodItem> foodItemsData = [];
 
+final List<FoodItem> defaultFoodCatalog = const [
+  FoodItem(
+    id: 1,
+    name: 'Adobong Manok',
+    restaurant: 'Storehouse Pickup',
+    price: 189,
+    rating: 4.8,
+    sold: 120,
+    badge: 'BESTSELLER',
+    category: 'Rice Dishes',
+    image: 'assets/assets1.jpg',
+    description: 'Classic savory garlic-soy chicken adobo served with steamed rice.',
+  ),
+  FoodItem(
+    id: 2,
+    name: 'Pork Sisig',
+    restaurant: 'Storehouse Pickup',
+    price: 220,
+    rating: 4.9,
+    sold: 210,
+    badge: 'BESTSELLER',
+    category: 'Rice Dishes',
+    image: 'assets/assets1.jpg',
+    description: 'Sizzling crispy pork sisig topped with chili and calamansi.',
+  ),
+  FoodItem(
+    id: 3,
+    name: 'Beef Bulalo',
+    restaurant: 'Storehouse Pickup',
+    price: 350,
+    rating: 4.7,
+    sold: 85,
+    badge: '',
+    category: 'Soups',
+    image: 'assets/assets1.jpg',
+    description: 'Rich slow-cooked beef shank soup with corn and cabbage.',
+  ),
+  FoodItem(
+    id: 4,
+    name: 'Halo-Halo Special',
+    restaurant: 'Storehouse Pickup',
+    price: 120,
+    rating: 4.9,
+    sold: 340,
+    badge: 'POPULAR',
+    category: 'Desserts',
+    image: 'assets/assets1.jpg',
+    description: 'Shaved ice with sweet beans, leche flan, ube halaya, and ice cream.',
+  ),
+  FoodItem(
+    id: 5,
+    name: 'Kare-Kare',
+    restaurant: 'Storehouse Pickup',
+    price: 290,
+    rating: 4.8,
+    sold: 95,
+    badge: '',
+    category: 'Rice Dishes',
+    image: 'assets/assets1.jpg',
+    description: 'Savory peanut stew with tender beef and bagoong on the side.',
+  ),
+];
+
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
@@ -100,27 +163,36 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchProducts() async {
     try {
       final products = await ApiService.getProducts();
+      if (products.isNotEmpty) {
+        setState(() {
+          foodItemsData = products.map((p) {
+            final mapped = AdapterService.convertProductToFoodItem(p);
+            return FoodItem(
+              id: mapped['id'],
+              name: mapped['name'],
+              restaurant: mapped['restaurant'],
+              price: mapped['price'],
+              rating: mapped['rating'],
+              sold: mapped['sold'],
+              badge: mapped['badge'],
+              category: mapped['category'],
+              image: mapped['image'],
+              description: mapped['description'],
+            );
+          }).toList();
+          isLoading = false;
+        });
+        return;
+      }
+    } catch (e) {
+      print('Laravel local server offline ($e). Operating with default catalog.');
+    }
+
+    if (mounted) {
       setState(() {
-        foodItemsData = products.map((p) {
-          final mapped = AdapterService.convertProductToFoodItem(p);
-          return FoodItem(
-            id: mapped['id'],
-            name: mapped['name'],
-            restaurant: mapped['restaurant'],
-            price: mapped['price'],
-            rating: mapped['rating'],
-            sold: mapped['sold'],
-            badge: mapped['badge'],
-            category: mapped['category'],
-            image: mapped['image'],
-            description: mapped['description'],
-          );
-        }).toList();
+        foodItemsData = defaultFoodCatalog;
         isLoading = false;
       });
-    } catch (e) {
-      print('Load error: ');
-      setState(() => isLoading = false);
     }
   }
 
@@ -557,12 +629,6 @@ class _HomeScreenState extends State<HomeScreen> {
             // Top Header
             _buildTopHeader(isDesktop),
 
-            // Search Bar
-            _buildSearchBar(),
-
-            // Category Pills
-            _buildCategoryPills(),
-
             // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
@@ -572,9 +638,16 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 8),
-                      // Hero Banner
+                      const SizedBox(height: 12),
+                      // Hero Banner (Photo)
                       _buildHeroBanner(),
+                      const SizedBox(height: 12),
+
+                      // Search Bar (Under Photo)
+                      _buildSearchBar(),
+
+                      // Category Filters (Under Search Bar)
+                      _buildCategoryPills(),
                       const SizedBox(height: 12),
 
                       // Feature Cards (Made Fresh / Easy Ordering)
@@ -583,10 +656,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
                       // Today's Picks (Horizontal scroll)
                       _buildTodaysPicks(),
-                      const SizedBox(height: 20),
-
-                      // Nearby Restaurants (Preview list)
-                      _buildNearbySection(),
                       const SizedBox(height: 20),
 
                       // Popular Right Now (Grid)
@@ -676,6 +745,20 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
           const SizedBox(width: 8),
           if (_currentUser.isVerified) ...[
+            if (_currentUser.isAdmin) ...[
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pushNamed(context, '/admin'),
+                icon: const Icon(Icons.dashboard, size: 14, color: Colors.white),
+                label: const Text('Admin Portal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF2563EB),
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                ),
+              ),
+              const SizedBox(width: 6),
+            ],
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
               decoration: BoxDecoration(
@@ -743,8 +826,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildSearchBar() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      color: Colors.transparent,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
       child: Container(
         height: 44,
         decoration: BoxDecoration(
@@ -776,8 +859,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   Widget _buildCategoryPills() {
     return Container(
-      color: Colors.white,
-      padding: const EdgeInsets.fromLTRB(16, 6, 16, 12),
+      color: Colors.transparent,
+      padding: const EdgeInsets.fromLTRB(16, 6, 16, 8),
       child: SingleChildScrollView(
         scrollDirection: Axis.horizontal,
         child: Row(
@@ -1114,97 +1197,6 @@ class _HomeScreenState extends State<HomeScreen> {
                                       ),
                                     ],
                                   ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNearbySection() {
-    final restaurants = ['Lutong Bahay ni Ate', 'Kainan sa Daan', 'Kuya Lechon', 'Mang Kanor'];
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              const Text(
-                '🗺️ Nearby Restaurants',
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-              ),
-              TextButton(
-                onPressed: () {},
-                style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
-                child: const Text('See all →', style: TextStyle(color: brandColor, fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        SizedBox(
-          height: 135,
-          child: ListView.builder(
-            scrollDirection: Axis.horizontal,
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            itemCount: restaurants.length,
-            itemBuilder: (context, index) {
-              final name = restaurants[index];
-              return Container(
-                width: 145,
-                margin: const EdgeInsets.only(right: 12),
-                child: InkWell(
-                  onTap: () {},
-                  borderRadius: BorderRadius.circular(14),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: const Color(0xFFF3F4F6)),
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          height: 70,
-                          decoration: BoxDecoration(
-                            color: Colors.grey.shade200,
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                          ),
-                          child: Center(
-                            child: Icon(Icons.storefront, color: Colors.grey.shade400, size: 28),
-                          ),
-                        ),
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                name,
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Row(
-                                children: const [
-                                  Icon(Icons.star, color: Colors.amber, size: 10),
-                                  SizedBox(width: 2),
-                                  Text('4.8 · 1.2 km', style: TextStyle(fontSize: 9, color: Color(0xFF9CA3AF))),
                                 ],
                               ),
                             ],

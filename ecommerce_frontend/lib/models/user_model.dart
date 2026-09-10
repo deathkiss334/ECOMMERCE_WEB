@@ -7,6 +7,7 @@ class UserModel {
   final String phoneNumber;
   final String emailAddress;
   final bool isVerified;
+  final bool isAdmin;
 
   UserModel({
     required this.firstName,
@@ -17,6 +18,7 @@ class UserModel {
     required this.phoneNumber,
     required this.emailAddress,
     this.isVerified = true,
+    this.isAdmin = false,
   });
 
   /// Factory to construct empty Guest account profile
@@ -30,6 +32,7 @@ class UserModel {
       phoneNumber: '',
       emailAddress: '',
       isVerified: false,
+      isAdmin: false,
     );
   }
 
@@ -44,6 +47,22 @@ class UserModel {
       phoneNumber: '09123456789',
       emailAddress: 'juan.delacruz@example.com',
       isVerified: true,
+      isAdmin: false,
+    );
+  }
+
+  /// Construct temporary Admin Mock profile
+  factory UserModel.adminMock() {
+    return UserModel(
+      firstName: 'Admin',
+      secondName: 'System',
+      middleName: 'Owner',
+      birthday: '1990-01-01',
+      address: 'Storehouse Admin HQ, Dasmariñas, Cavite',
+      phoneNumber: '09990001111',
+      emailAddress: 'admin@example.com',
+      isVerified: true,
+      isAdmin: true,
     );
   }
 
@@ -63,6 +82,7 @@ class UserModel {
       phoneNumber: json['phone_number'] ?? '',
       emailAddress: json['email_address'] ?? '',
       isVerified: json['is_verified'] ?? true,
+      isAdmin: json['is_admin'] ?? false,
     );
   }
 
@@ -76,6 +96,7 @@ class UserModel {
       'phone_number': phoneNumber,
       'email_address': emailAddress,
       'is_verified': isVerified,
+      'is_admin': isAdmin,
     };
   }
 }

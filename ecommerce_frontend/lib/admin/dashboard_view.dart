@@ -30,14 +30,19 @@ class DashboardView extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 32),
-          Row(
-            children: [
-              Expanded(child: _buildStatCard(context, 'Total Revenue', '\$124,563', '12.5%', true)),
-              const SizedBox(width: 24),
-              Expanded(child: _buildStatCard(context, 'Active Users', '45,231', '8.2%', true)),
-              const SizedBox(width: 24),
-              Expanded(child: _buildStatCard(context, 'New Orders', '1,204', '2.1%', false)),
-            ],
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final cardWidth = constraints.maxWidth < 700 ? constraints.maxWidth : (constraints.maxWidth - 48) / 3;
+              return Wrap(
+                spacing: 24,
+                runSpacing: 16,
+                children: [
+                  SizedBox(width: cardWidth, child: _buildStatCard(context, 'Total Revenue', '₱124,563', '12.5%', true)),
+                  SizedBox(width: cardWidth, child: _buildStatCard(context, 'Active Users', '45,231', '8.2%', true)),
+                  SizedBox(width: cardWidth, child: _buildStatCard(context, 'New Orders', '1,204', '2.1%', false)),
+                ],
+              );
+            },
           ),
           const SizedBox(height: 32),
           Container(

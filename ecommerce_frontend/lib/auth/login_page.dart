@@ -39,10 +39,14 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isSubmitting = true);
 
-    // Fetch user profile from Firebase or fallback to Verified User profile
+    // Fetch user profile from Firebase or fallback to Verified User / Admin profile
     UserModel user = await FirebaseUserService.fetchUserProfile(email);
     if (!user.isVerified || user.emailAddress.isEmpty) {
-      user = UserModel.defaultVerified();
+      if (email.toLowerCase().contains('admin')) {
+        user = UserModel.adminMock();
+      } else {
+        user = UserModel.defaultVerified();
+      }
     }
 
     FirebaseUserService.setCurrentUser(user);
@@ -51,14 +55,41 @@ class _LoginPageState extends State<LoginPage> {
 
     if (!mounted) return;
 
+    if (user.isAdmin || email.toLowerCase() == 'admin@example.com' || email.toLowerCase() == 'admin') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Welcome, Admin! Logged in as System Admin 👑'),
+          backgroundColor: Color(0xFF2563EB),
+        ),
+      );
+      Navigator.pushReplacementNamed(context, '/admin');
+      return;
+    }
+
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Welcome back, ${user.firstName}! Logged in as Verified User 🛡️'),
+        content: Text(
+          'Welcome back, ${user.firstName}! Logged in as Verified User 🛡️',
+        ),
         backgroundColor: Colors.green,
       ),
     );
 
     Navigator.popUntil(context, (route) => route.isFirst);
+  }
+
+  void _handleAdminQuickLogin() {
+    final adminUser = UserModel.adminMock();
+    FirebaseUserService.setCurrentUser(adminUser);
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Logged in as Mock Admin 👑'),
+        backgroundColor: Color(0xFF2563EB),
+      ),
+    );
+
+    Navigator.pushReplacementNamed(context, '/admin');
   }
 
   @override
@@ -88,7 +119,7 @@ class _LoginPageState extends State<LoginPage> {
                     color: Colors.black.withValues(alpha: 0.05),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
-                  )
+                  ),
                 ],
               ),
               child: Column(
@@ -102,7 +133,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Log in as a Verified User to enjoy auto-fill checkout',
+                    'Log in as a Verified User to enjoy benefits',
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
@@ -112,7 +143,9 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: InputDecoration(
                       labelText: 'Email Address',
                       prefixIcon: const Icon(Icons.email_outlined, size: 18),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(color: brandColor),
@@ -126,7 +159,9 @@ class _LoginPageState extends State<LoginPage> {
                     decoration: InputDecoration(
                       labelText: 'Password',
                       prefixIcon: const Icon(Icons.lock_outline, size: 18),
-                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(8),
                         borderSide: const BorderSide(color: brandColor),
@@ -140,32 +175,71 @@ class _LoginPageState extends State<LoginPage> {
                       padding: const EdgeInsets.symmetric(vertical: 14),
                       backgroundColor: brandColor,
                       foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
                     child: _isSubmitting
                         ? const SizedBox(
                             width: 20,
                             height: 20,
-                            child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                            child: CircularProgressIndicator(
+                              color: Colors.white,
+                              strokeWidth: 2,
+                            ),
                           )
-                        : const Text('Log In as Verified User', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        : const Text(
+                            'Log In',
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                  const SizedBox(height: 12),
+                  OutlinedButton.icon(
+                    onPressed: _isSubmitting ? null : _handleAdminQuickLogin,
+                    icon: const Icon(Icons.admin_panel_settings, size: 18, color: Color(0xFF2563EB)),
+                    label: const Text(
+                      'Log in as Admin (Mock Account)',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF2563EB),
+                      ),
+                    ),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      side: const BorderSide(color: Color(0xFF93C5FD)),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
                   ),
                   const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account?", style: TextStyle(fontSize: 13)),
+                      const Text(
+                        "Don't have an account?",
+                        style: TextStyle(fontSize: 13),
+                      ),
                       TextButton(
                         onPressed: () {
                           Navigator.pushReplacement(
                             context,
-                            MaterialPageRoute(builder: (context) => const SignupPage()),
+                            MaterialPageRoute(
+                              builder: (context) => const SignupPage(),
+                            ),
                           );
                         },
-                        child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold)),
+                        child: const Text(
+                          'Sign Up',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
-                  )
+                  ),
                 ],
               ),
             ),

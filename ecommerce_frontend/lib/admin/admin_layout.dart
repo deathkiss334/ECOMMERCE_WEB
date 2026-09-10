@@ -83,29 +83,31 @@ class _AdminLayoutState extends State<AdminLayout> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       // Search
-                      Container(
-                        width: 300,
-                        height: 40,
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFF1F5F9),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 16),
-                        child: const Row(
-                          children: [
-                            Icon(Icons.search, color: Colors.grey, size: 20),
-                            SizedBox(width: 8),
-                            Expanded(
-                              child: TextField(
-                                decoration: InputDecoration(
-                                  hintText: 'Search...',
-                                  border: InputBorder.none,
-                                  isDense: true,
-                                  contentPadding: EdgeInsets.zero,
+                      Flexible(
+                        child: Container(
+                          constraints: const BoxConstraints(maxWidth: 300),
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 16),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.search, color: Colors.grey, size: 20),
+                              SizedBox(width: 8),
+                              Expanded(
+                                child: TextField(
+                                  decoration: InputDecoration(
+                                    hintText: 'Search...',
+                                    border: InputBorder.none,
+                                    isDense: true,
+                                    contentPadding: EdgeInsets.zero,
+                                  ),
                                 ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
                       ),
                       // Profile
