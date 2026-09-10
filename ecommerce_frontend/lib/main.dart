@@ -139,13 +139,26 @@ class _HomeScreenState extends State<HomeScreen> {
   int get cartTotal => _cart.fold(0, (sum, item) => sum + (item.item.price * item.qty));
 
   List<FoodItem> get filteredItems {
-    return foodItemsData.where((item) {
+    final query = _searchQuery.trim().toLowerCase();
+
+    final items = foodItemsData.where((item) {
       final matchesCategory = _selectedCategory == 'All' || item.category == _selectedCategory;
-      final matchesSearch = _searchQuery.isEmpty ||
-          item.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
-          item.restaurant.toLowerCase().contains(_searchQuery.toLowerCase());
+      final matchesSearch = query.isEmpty ||
+          item.name.toLowerCase().contains(query) ||
+          item.restaurant.toLowerCase().contains(query);
       return matchesCategory && matchesSearch;
     }).toList();
+
+    switch (_sortBy) {
+      case 'Price: Low':
+        items.sort((a, b) => a.price.compareTo(b.price));
+        break;
+      case 'Rating':
+        items.sort((a, b) => b.rating.compareTo(a.rating));
+        break;
+    }
+
+    return items;
   }
 
   void _toggleSave(int id) {
