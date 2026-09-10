@@ -746,62 +746,6 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Spacer(),
-          // Account Type Selector Pill
-          GestureDetector(
-            onTap: () {
-              setState(() {
-                if (_currentUser.isVerified) {
-                  _currentUser = UserModel.guest();
-                } else {
-                  _currentUser = UserModel.defaultVerified();
-                }
-                FirebaseUserService.setCurrentUser(_currentUser);
-              });
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(_currentUser.isVerified
-                      ? 'Switched to Verified User Mode (Juan Dela Cruz) 🛡️'
-                      : 'Switched to Guest Account Mode 👤'),
-                  duration: const Duration(seconds: 2),
-                  behavior: SnackBarBehavior.floating,
-                ),
-              );
-            },
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: _currentUser.isVerified
-                    ? Colors.green.withValues(alpha: 0.1)
-                    : Colors.orange.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(
-                  color: _currentUser.isVerified
-                      ? Colors.green.withValues(alpha: 0.4)
-                      : Colors.orange.withValues(alpha: 0.4),
-                ),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Icon(
-                    _currentUser.isVerified ? Icons.verified : Icons.person_outline,
-                    size: 14,
-                    color: _currentUser.isVerified ? Colors.green[800] : Colors.orange[800],
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    _currentUser.isVerified ? 'Verified User' : 'Guest',
-                    style: TextStyle(
-                      fontSize: 11,
-                      fontWeight: FontWeight.bold,
-                      color: _currentUser.isVerified ? Colors.green[900] : Colors.orange[900],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
           // Cart Button in Header for fast access
           Stack(
             clipBehavior: Clip.none,
@@ -830,20 +774,25 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
             ],
           ),
-          const SizedBox(width: 6),
-          // Admin Dashboard Button
+          const SizedBox(width: 8),
+          // Log In Button
           TextButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/admin'),
-            icon: const Icon(Icons.admin_panel_settings, size: 16, color: brandColor),
-            label: Text(
-              isDesktop ? 'Admin Portal' : 'Admin',
-              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: brandColor),
+            onPressed: () => Navigator.pushNamed(context, '/login'),
+            icon: const Icon(Icons.login, size: 18, color: Colors.black87),
+            label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+          ),
+          const SizedBox(width: 6),
+          // Sign Up Button
+          ElevatedButton(
+            onPressed: () => Navigator.pushNamed(context, '/signup'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: brandColor,
+              foregroundColor: Colors.white,
+              elevation: 0,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
             ),
-            style: TextButton.styleFrom(
-              backgroundColor: brandColor.withValues(alpha: 0.1),
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-            ),
+            child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
           ),
         ],
       ),
