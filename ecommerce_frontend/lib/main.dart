@@ -253,15 +253,14 @@ class _HomeScreenState extends State<HomeScreen> {
     if (_cart.isEmpty) return;
 
     final isVerified = _currentUser.isVerified;
-    final defaultUser = UserModel.defaultVerified();
 
-    final firstNameCtrl = TextEditingController(text: isVerified ? defaultUser.firstName : '');
-    final secondNameCtrl = TextEditingController(text: isVerified ? defaultUser.secondName : '');
-    final middleNameCtrl = TextEditingController(text: isVerified ? defaultUser.middleName : '');
-    final birthdayCtrl = TextEditingController(text: isVerified ? defaultUser.birthday : '');
-    final addressCtrl = TextEditingController(text: isVerified ? defaultUser.address : '');
-    final phoneCtrl = TextEditingController(text: isVerified ? defaultUser.phoneNumber : '');
-    final emailCtrl = TextEditingController(text: isVerified ? defaultUser.emailAddress : '');
+    final firstNameCtrl = TextEditingController(text: isVerified ? _currentUser.firstName : '');
+    final secondNameCtrl = TextEditingController(text: isVerified ? _currentUser.secondName : '');
+    final middleNameCtrl = TextEditingController(text: isVerified ? _currentUser.middleName : '');
+    final birthdayCtrl = TextEditingController(text: isVerified ? _currentUser.birthday : '');
+    final addressCtrl = TextEditingController(text: isVerified ? _currentUser.address : '');
+    final phoneCtrl = TextEditingController(text: isVerified ? _currentUser.phoneNumber : '');
+    final emailCtrl = TextEditingController(text: isVerified ? _currentUser.emailAddress : '');
 
     bool currentVerifiedMode = isVerified;
     String selectedPaymentMethod = 'gcash';
@@ -270,33 +269,10 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (dlgCtx) => StatefulBuilder(
         builder: (dlgCtx, setDlgState) {
-          void toggleMode(bool verified) {
-            setDlgState(() {
-              currentVerifiedMode = verified;
-              if (verified) {
-                firstNameCtrl.text = defaultUser.firstName;
-                secondNameCtrl.text = defaultUser.secondName;
-                middleNameCtrl.text = defaultUser.middleName;
-                birthdayCtrl.text = defaultUser.birthday;
-                addressCtrl.text = defaultUser.address;
-                phoneCtrl.text = defaultUser.phoneNumber;
-                emailCtrl.text = defaultUser.emailAddress;
-              } else {
-                firstNameCtrl.clear();
-                secondNameCtrl.clear();
-                middleNameCtrl.clear();
-                birthdayCtrl.clear();
-                addressCtrl.clear();
-                phoneCtrl.clear();
-                emailCtrl.clear();
-              }
-            });
-          }
-
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 680),
+              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 660),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -318,82 +294,6 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                     const SizedBox(height: 12),
 
-                    // User Mode Selector
-                    Container(
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFF3F4F6),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      padding: const EdgeInsets.all(4),
-                      child: Row(
-                        children: [
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => toggleMode(true),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: currentVerifiedMode ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: currentVerifiedMode
-                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
-                                      : [],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.verified_user,
-                                        size: 16, color: currentVerifiedMode ? brandColor : Colors.grey),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Verified User',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: currentVerifiedMode ? brandColor : Colors.grey[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          Expanded(
-                            child: GestureDetector(
-                              onTap: () => toggleMode(false),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(vertical: 10),
-                                decoration: BoxDecoration(
-                                  color: !currentVerifiedMode ? Colors.white : Colors.transparent,
-                                  borderRadius: BorderRadius.circular(10),
-                                  boxShadow: !currentVerifiedMode
-                                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 4)]
-                                      : [],
-                                ),
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
-                                  children: [
-                                    Icon(Icons.person_outline,
-                                        size: 16, color: !currentVerifiedMode ? Colors.orange[800] : Colors.grey),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'Guest Account',
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        fontWeight: FontWeight.bold,
-                                        color: !currentVerifiedMode ? Colors.orange[800] : Colors.grey[700],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-
                     // Status Notification Banner
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -407,7 +307,7 @@ class _HomeScreenState extends State<HomeScreen> {
                       child: Row(
                         children: [
                           Icon(
-                            currentVerifiedMode ? Icons.cloud_done : Icons.edit_note,
+                            currentVerifiedMode ? Icons.verified_user : Icons.person_outline,
                             size: 18,
                             color: currentVerifiedMode ? Colors.green[800] : Colors.orange[800],
                           ),
@@ -415,8 +315,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           Expanded(
                             child: Text(
                               currentVerifiedMode
-                                  ? '✨ Profile Auto-Filled from Firebase Cloud Firestore'
-                                  : '⚠️ Guest Mode: Please manually fill in all details one by one.',
+                                  ? '✨ Verified User: Name, Address & Phone Auto-Filled!'
+                                  : '👤 Guest Mode: Please enter your personal details below to place your order.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -775,25 +675,67 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(width: 8),
-          // Log In Button
-          TextButton.icon(
-            onPressed: () => Navigator.pushNamed(context, '/login'),
-            icon: const Icon(Icons.login, size: 18, color: Colors.black87),
-            label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-          ),
-          const SizedBox(width: 6),
-          // Sign Up Button
-          ElevatedButton(
-            onPressed: () => Navigator.pushNamed(context, '/signup'),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: brandColor,
-              foregroundColor: Colors.white,
-              elevation: 0,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+          if (_currentUser.isVerified) ...[
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              decoration: BoxDecoration(
+                color: Colors.green.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.verified, size: 14, color: Colors.green),
+                  const SizedBox(width: 4),
+                  Text(
+                    _currentUser.firstName.isNotEmpty ? _currentUser.firstName : 'Verified User',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green[900],
+                    ),
+                  ),
+                ],
+              ),
             ),
-            child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
-          ),
+            const SizedBox(width: 6),
+            TextButton.icon(
+              onPressed: () {
+                setState(() => _currentUser = UserModel.guest());
+                FirebaseUserService.setCurrentUser(_currentUser);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Logged Out successfully')),
+                );
+              },
+              icon: const Icon(Icons.logout, size: 16, color: Colors.black54),
+              label: const Text('Log Out', style: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600)),
+            ),
+          ] else ...[
+            TextButton.icon(
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/login');
+                setState(() => _currentUser = FirebaseUserService.currentUser);
+              },
+              icon: const Icon(Icons.login, size: 18, color: Colors.black87),
+              label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+            ),
+            const SizedBox(width: 6),
+            ElevatedButton(
+              onPressed: () async {
+                await Navigator.pushNamed(context, '/signup');
+                setState(() => _currentUser = FirebaseUserService.currentUser);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: brandColor,
+                foregroundColor: Colors.white,
+                elevation: 0,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              ),
+              child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
+            ),
+          ],
         ],
       ),
     );
