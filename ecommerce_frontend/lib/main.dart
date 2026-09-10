@@ -384,9 +384,11 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopHeader(bool isDesktop) {
+    final horizontalPadding = isDesktop ? 24.0 : 16.0;
+
     return Container(
       color: Colors.white,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 10),
       child: Row(
         children: [
           Container(
