@@ -42,6 +42,35 @@ This guide explains how the **Hybrid Database Architecture** works in this proje
 
 ---
 
+## 📦 `product_table` Cloud Firestore Structure
+
+The `product_table` collection in Cloud Firestore contains product stock and pricing documents:
+
+| Field Name | Type | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `product_id` | String | Unique Identifier | `"PROD-101"` |
+| `product_quantity` | Number (Integer) | Available Stock Quantity | `50` |
+| `product_type` | String | Product Category / Type | `"Chicken Inasal"` |
+| `product_price` | Number (Double) | Unit Price | `189.00` |
+
+---
+
+## 👥 `users_table` Cloud Firestore Structure
+
+The `users_table` collection in Cloud Firestore contains customer profile documents:
+
+| Field Name | Type | Description | Example |
+| :--- | :--- | :--- | :--- |
+| `first_name` | String | First Name | `"Juan"` |
+| `middle_name` | String | Middle Name | `"Santos"` |
+| `last_name` | String | Last Name | `"Dela Cruz"` |
+| `birthday` | String | Birthday | `"1998-05-15"` |
+| `address` | String | Delivery Address | `"123 Governor Drive, Dasmariñas, Cavite"` |
+| `email_address` | String | Primary Identifier / Email | `"juan.delacruz@example.com"` |
+| `phone_number` | String | Contact Phone | `"09123456789"` |
+
+---
+
 ## 🚀 3-Minute Setup: Connecting Your Firebase Project
 
 ### Step 1: Create a Firebase Project

@@ -48,3 +48,14 @@ Route::get('/orders/track/{order_number}', function ($order_number) {
         ->firstOrFail();
 });
 Route::post('/orders/reviews', [\App\Http\Controllers\Api\OrderHistoryController::class, 'storeReview']);
+
+// Product Table API Endpoints (Laravel DB + Firebase Hybrid Sync)
+Route::get('/product-table', [\App\Http\Controllers\Api\ProductTableController::class, 'index']);
+Route::post('/product-table', [\App\Http\Controllers\Api\ProductTableController::class, 'store']);
+Route::put('/product-table/{id}', [\App\Http\Controllers\Api\ProductTableController::class, 'update']);
+Route::delete('/product-table/{id}', [\App\Http\Controllers\Api\ProductTableController::class, 'destroy']);
+
+// Users Table API Endpoints (Laravel DB + Firebase Hybrid Sync)
+Route::get('/users-table', [\App\Http\Controllers\Api\UsersTableController::class, 'index']);
+Route::post('/users-table', [\App\Http\Controllers\Api\UsersTableController::class, 'store']);
+Route::delete('/users-table/{id}', [\App\Http\Controllers\Api\UsersTableController::class, 'destroy']);

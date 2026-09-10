@@ -147,6 +147,117 @@ class FirebaseService
     }
 
     /**
+     * Synchronize a record in product_table to Firebase Cloud Firestore (product_table collection).
+     * Columns: product_id, product_quantity, product_type, product_price
+     *
+     * @param mixed $productData ProductTable model instance or array
+     * @return bool
+     */
+    public static function syncProductTable($productData): bool
+    {
+        $projectId = config('firebase.project_id') ?: env('FIREBASE_PROJECT_ID');
+
+        if (empty($projectId) || !config('firebase.sync_enabled', true)) {
+            Log::info("Firebase product_table sync skipped: FIREBASE_PROJECT_ID not set");
+            return false;
+        }
+
+        $data = is_array($productData) ? $productData : $productData->toArray();
+        $productId = $data['product_id'] ?? null;
+
+        if (empty($productId)) {
+            return false;
+        }
+
+        try {
+            $docId = preg_replace('/[^a-zA-Z0-9_\-]/', '_', (string)$productId);
+            $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/product_table/{$docId}";
+
+            $firestoreFields = [
+                'product_id' => ['stringValue' => (string)$productId],
+                'product_quantity' => ['integerValue' => (int)($data['product_quantity'] ?? 0)],
+                'product_type' => ['stringValue' => (string)($data['product_type'] ?? '')],
+                'product_price' => ['doubleValue' => (float)($data['product_price'] ?? 0.0)],
+                'updated_at' => ['stringValue' => now()->toIso8601String()],
+            ];
+
+            $token = self::getAccessToken();
+            $request = Http::timeout(5);
+            if ($token) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->patch($url, ['fields' => $firestoreFields]);
+
+            if ($response->successful()) {
+                Log::info("Firebase product_table sync succeeded for {$productId}");
+                return true;
+            }
+        } catch (\Throwable $e) {
+            Log::error("Firebase product_table sync exception for {$productId}: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Synchronize a record in users_table to Firebase Cloud Firestore (users_table collection).
+     * Columns: first_name, middle_name, last_name, birthday, address, email_address, phone_number
+     *
+     * @param mixed $userData UsersTable model instance or array
+     * @return bool
+     */
+    public static function syncUsersTable($userData): bool
+    {
+        $projectId = config('firebase.project_id') ?: env('FIREBASE_PROJECT_ID');
+
+        if (empty($projectId) || !config('firebase.sync_enabled', true)) {
+            Log::info("Firebase users_table sync skipped: FIREBASE_PROJECT_ID not set");
+            return false;
+        }
+
+        $data = is_array($userData) ? $userData : $userData->toArray();
+        $email = $data['email_address'] ?? null;
+
+        if (empty($email)) {
+            return false;
+        }
+
+        try {
+            $docId = preg_replace('/[^a-zA-Z0-9]/', '_', (string)$email);
+            $url = "https://firestore.googleapis.com/v1/projects/{$projectId}/databases/(default)/documents/users_table/{$docId}";
+
+            $firestoreFields = [
+                'first_name' => ['stringValue' => (string)($data['first_name'] ?? '')],
+                'middle_name' => ['stringValue' => (string)($data['middle_name'] ?? '')],
+                'last_name' => ['stringValue' => (string)($data['last_name'] ?? $data['second_name'] ?? '')],
+                'birthday' => ['stringValue' => (string)($data['birthday'] ?? '')],
+                'address' => ['stringValue' => (string)($data['address'] ?? '')],
+                'email_address' => ['stringValue' => (string)$email],
+                'phone_number' => ['stringValue' => (string)($data['phone_number'] ?? '')],
+                'updated_at' => ['stringValue' => now()->toIso8601String()],
+            ];
+
+            $token = self::getAccessToken();
+            $request = Http::timeout(5);
+            if ($token) {
+                $request = $request->withToken($token);
+            }
+
+            $response = $request->patch($url, ['fields' => $firestoreFields]);
+
+            if ($response->successful()) {
+                Log::info("Firebase users_table sync succeeded for {$email}");
+                return true;
+            }
+        } catch (\Throwable $e) {
+            Log::error("Firebase users_table sync exception for {$email}: " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
      * Retrieve OAuth2 Bearer token if a Google service account JSON file is present.
      *
      * @return string|null
