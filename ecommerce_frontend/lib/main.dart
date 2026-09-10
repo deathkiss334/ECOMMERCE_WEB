@@ -7,6 +7,9 @@ import 'services/api_service.dart';
 import 'services/adapter_service.dart';
 import 'models/user_model.dart';
 import 'services/firebase_user_service.dart';
+import 'admin/admin_layout.dart';
+import 'auth/login_page.dart';
+import 'auth/signup_page.dart';
 
 
 void main() {
@@ -56,7 +59,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Food Delivery UI',
+      title: 'Food Delivery Web UI',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -69,6 +72,11 @@ class MyApp extends StatelessWidget {
         fontFamily: 'Roboto',
       ),
       home: const HomeScreen(),
+      routes: {
+        '/admin': (context) => const AdminLayout(),
+        '/login': (context) => const LoginPage(),
+        '/signup': (context) => const SignupPage(),
+      },
     );
   }
 }
@@ -691,7 +699,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
       ),
-      bottomNavigationBar: _buildBottomNav(),
+      bottomNavigationBar: isDesktop ? null : _buildBottomNav(),
     );
   }
 
@@ -821,6 +829,21 @@ class _HomeScreenState extends State<HomeScreen> {
                   ),
                 ),
             ],
+          ),
+          const SizedBox(width: 6),
+          // Admin Dashboard Button
+          TextButton.icon(
+            onPressed: () => Navigator.pushNamed(context, '/admin'),
+            icon: const Icon(Icons.admin_panel_settings, size: 16, color: brandColor),
+            label: Text(
+              isDesktop ? 'Admin Portal' : 'Admin',
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 11, color: brandColor),
+            ),
+            style: TextButton.styleFrom(
+              backgroundColor: brandColor.withValues(alpha: 0.1),
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
           ),
         ],
       ),
