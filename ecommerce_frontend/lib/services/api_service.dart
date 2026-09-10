@@ -5,9 +5,8 @@ import '../models/order_model.dart';
 import 'dart:io' show Platform;
 
 class ApiService {
-  // Use 10.0.2.2 for Android Emulator to connect to localhost
   static String get baseUrl {
-    if (Platform.isAndroid) return 'http://10.0.2.2:8000/api';
+    // 127.0.0.1 works for physical devices (with `adb reverse tcp:8000 tcp:8000`) and Desktop/Web
     return 'http://127.0.0.1:8000/api';
   }
 
