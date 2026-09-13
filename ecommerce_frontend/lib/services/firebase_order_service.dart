@@ -18,22 +18,35 @@ class FirebaseOrderService {
 
   /// Stream of orders. If Firebase REST / Firestore is configured, it polls/listens
   /// to Firestore. Otherwise, it polls the Laravel backend API.
-  static Stream<List<OrderModel>> streamOrders({Duration interval = const Duration(seconds: 4)}) async* {
+  static Stream<List<OrderModel>> streamOrders({
+    List<String>? orderNumbers,
+    String? phone,
+    Duration interval = const Duration(seconds: 4),
+  }) async* {
     while (true) {
       try {
-        if (isFirebaseConfigured) {
-          final orders = await _fetchFromFirestore();
-          yield orders;
-        } else {
-          final orders = await ApiService.getOrders();
-          yield orders;
-        }
+        final orders = await ApiService.getOrders(orderNumbers: orderNumbers, phone: phone);
+        yield orders;
       } catch (e) {
-        // Fallback to API if any network error
         try {
-          final orders = await ApiService.getOrders();
+          final orders = await ApiService.getOrders(orderNumbers: orderNumbers, phone: phone);
           yield orders;
         } catch (_) {}
+      }
+      await Future.delayed(interval);
+    }
+  }
+
+  /// Stream of all customer orders for Admin side real-time updates.
+  static Stream<List<OrderModel>> streamAllAdminOrders({
+    Duration interval = const Duration(seconds: 4),
+  }) async* {
+    while (true) {
+      try {
+        final orders = await ApiService.getAdminOrders();
+        yield orders;
+      } catch (e) {
+        print('Error streaming admin orders: $e');
       }
       await Future.delayed(interval);
     }
@@ -55,6 +68,8 @@ class FirebaseOrderService {
           orderNumber: fields['order_number']?['stringValue'] ?? '',
           status: fields['status']?['stringValue'] ?? 'pending',
           paymentStatus: fields['payment_status']?['stringValue'] ?? 'unpaid',
+          orderType: fields['order_type']?['stringValue'] ?? 'delivery',
+          deliveryFee: double.tryParse(fields['delivery_fee']?['doubleValue']?.toString() ?? '0') ?? 0.0,
           totalAmount: double.tryParse(fields['total_amount']?['doubleValue']?.toString() ?? '0') ?? 0.0,
           notes: fields['notes']?['stringValue'] ?? '',
           createdAt: fields['updated_at']?['stringValue'] ?? '',

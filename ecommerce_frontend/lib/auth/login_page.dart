@@ -11,8 +11,8 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  final _emailCtrl = TextEditingController(text: 'juan.delacruz@example.com');
-  final _passwordCtrl = TextEditingController(text: 'password123');
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
 
   bool _isSubmitting = false;
 

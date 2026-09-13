@@ -215,6 +215,7 @@ class _HomeScreenState extends State<HomeScreen> {
   int _currentNavIndex = 0;
   final Set<int> _savedItemIds = {};
   final List<CartItem> _cart = [];
+  final List<String> _sessionOrderNumbers = [];
   UserModel _currentUser = FirebaseUserService.currentUser;
 
   int get cartCount => _cart.fold(0, (sum, item) => sum + item.qty);
@@ -321,21 +322,30 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  void _showCheckoutCustomerForm() {
+  void _showCheckoutCustomerForm({
+    String? initialFirstName,
+    String? initialSecondName,
+    String? initialMiddleName,
+    String? initialBirthday,
+    String? initialAddress,
+    String? initialPhone,
+    String? initialEmail,
+    String? initialOrderType,
+  }) {
     if (_cart.isEmpty) return;
 
     final isVerified = _currentUser.isVerified;
 
-    final firstNameCtrl = TextEditingController(text: isVerified ? _currentUser.firstName : '');
-    final secondNameCtrl = TextEditingController(text: isVerified ? _currentUser.secondName : '');
-    final middleNameCtrl = TextEditingController(text: isVerified ? _currentUser.middleName : '');
-    final birthdayCtrl = TextEditingController(text: isVerified ? _currentUser.birthday : '');
-    final addressCtrl = TextEditingController(text: isVerified ? _currentUser.address : '');
-    final phoneCtrl = TextEditingController(text: isVerified ? _currentUser.phoneNumber : '');
-    final emailCtrl = TextEditingController(text: isVerified ? _currentUser.emailAddress : '');
+    final firstNameCtrl = TextEditingController(text: initialFirstName ?? (isVerified ? _currentUser.firstName : ''));
+    final secondNameCtrl = TextEditingController(text: initialSecondName ?? (isVerified ? _currentUser.secondName : ''));
+    final middleNameCtrl = TextEditingController(text: initialMiddleName ?? (isVerified ? _currentUser.middleName : ''));
+    final birthdayCtrl = TextEditingController(text: initialBirthday ?? (isVerified ? _currentUser.birthday : ''));
+    final addressCtrl = TextEditingController(text: initialAddress ?? (isVerified ? _currentUser.address : ''));
+    final phoneCtrl = TextEditingController(text: initialPhone ?? (isVerified ? _currentUser.phoneNumber : ''));
+    final emailCtrl = TextEditingController(text: initialEmail ?? (isVerified ? _currentUser.emailAddress : ''));
 
     bool currentVerifiedMode = isVerified;
-    String selectedPaymentMethod = 'gcash';
+    String selectedOrderType = initialOrderType ?? 'delivery';
 
     showDialog(
       context: context,
@@ -388,7 +398,7 @@ class _HomeScreenState extends State<HomeScreen> {
                             child: Text(
                               currentVerifiedMode
                                   ? '✨ Verified User: Name, Address & Phone Auto-Filled!'
-                                  : '👤 Guest Mode: Please enter your personal details below to place your order.',
+                                  : '👤 Guest Mode: Please enter your personal details below.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
@@ -405,7 +415,72 @@ class _HomeScreenState extends State<HomeScreen> {
                     Expanded(
                       child: SingleChildScrollView(
                         child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Order Option Selector
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text(
+                                        'Order Option:',
+                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
+                                      ),
+                                      if (selectedOrderType == 'delivery')
+                                        const Text(
+                                          '+₱10 Delivery Fee',
+                                          style: TextStyle(fontSize: 11, color: brandColor, fontWeight: FontWeight.bold),
+                                        ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    children: [
+                                      Expanded(
+                                        child: ChoiceChip(
+                                          label: const Center(child: Text('🍽️ Dine In', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+                                          selected: selectedOrderType == 'dine_in',
+                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'dine_in'),
+                                          selectedColor: brandColor.withValues(alpha: 0.15),
+                                          showCheckmark: false,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: ChoiceChip(
+                                          label: const Center(child: Text('🛍️ Takeout', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
+                                          selected: selectedOrderType == 'takeout',
+                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'takeout'),
+                                          selectedColor: brandColor.withValues(alpha: 0.15),
+                                          showCheckmark: false,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      Expanded(
+                                        child: ChoiceChip(
+                                          label: const Center(child: Text('🛵 Deliver (+₱10)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
+                                          selected: selectedOrderType == 'delivery',
+                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'delivery'),
+                                          selectedColor: brandColor.withValues(alpha: 0.15),
+                                          showCheckmark: false,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
                             Row(
                               children: [
                                 Expanded(child: _buildFormField('First Name', firstNameCtrl, Icons.person)),
@@ -422,7 +497,11 @@ class _HomeScreenState extends State<HomeScreen> {
                               ],
                             ),
                             const SizedBox(height: 10),
-                            _buildFormField('Delivery Address', addressCtrl, Icons.home),
+                            _buildFormField(
+                              selectedOrderType == 'delivery' ? 'Delivery Address' : 'Address (Optional for Dine In / Takeout)',
+                              addressCtrl,
+                              Icons.home,
+                            ),
                             const SizedBox(height: 10),
                             Row(
                               children: [
@@ -431,7 +510,309 @@ class _HomeScreenState extends State<HomeScreen> {
                                 Expanded(child: _buildFormField('Email Address', emailCtrl, Icons.email)),
                               ],
                             ),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 14),
+
+                    SizedBox(
+                      width: double.infinity,
+                      height: 46,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          final isAddressReq = selectedOrderType == 'delivery';
+                          if (firstNameCtrl.text.trim().isEmpty ||
+                              phoneCtrl.text.trim().isEmpty ||
+                              (isAddressReq && addressCtrl.text.trim().isEmpty)) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text(isAddressReq
+                                    ? 'Please fill in required fields (Name, Address, Phone)'
+                                    : 'Please fill in required fields (Name, Phone)'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          // Save user profile state
+                          final submittedUser = UserModel(
+                            firstName: firstNameCtrl.text.trim(),
+                            secondName: secondNameCtrl.text.trim(),
+                            middleName: middleNameCtrl.text.trim(),
+                            birthday: birthdayCtrl.text.trim(),
+                            address: addressCtrl.text.trim(),
+                            phoneNumber: phoneCtrl.text.trim(),
+                            emailAddress: emailCtrl.text.trim(),
+                            isVerified: currentVerifiedMode,
+                          );
+                          setState(() => _currentUser = submittedUser);
+
+                          Navigator.pop(dlgCtx);
+
+                          // Proceed to Step 2: Dedicated Order Summary Modal
+                          _showOrderSummaryModal(
+                            firstName: firstNameCtrl.text.trim(),
+                            secondName: secondNameCtrl.text.trim(),
+                            middleName: middleNameCtrl.text.trim(),
+                            birthday: birthdayCtrl.text.trim(),
+                            address: addressCtrl.text.trim(),
+                            phone: phoneCtrl.text.trim(),
+                            email: emailCtrl.text.trim(),
+                            orderType: selectedOrderType,
+                            isVerified: currentVerifiedMode,
+                          );
+                        },
+                        child: const Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              'Proceed to Order Summary',
+                              style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
+                            ),
+                            SizedBox(width: 8),
+                            Icon(Icons.arrow_forward, color: Colors.white, size: 18),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
+  void _showOrderSummaryModal({
+    required String firstName,
+    required String secondName,
+    required String middleName,
+    required String birthday,
+    required String address,
+    required String phone,
+    required String email,
+    required String orderType,
+    required bool isVerified,
+  }) {
+    if (_cart.isEmpty) return;
+
+    String selectedPaymentMethod = 'gcash';
+
+    showDialog(
+      context: context,
+      builder: (summaryCtx) => StatefulBuilder(
+        builder: (summaryCtx, setSummaryState) {
+          final int deliveryFee = orderType == 'delivery' ? 10 : 0;
+          final int checkoutTotal = cartTotal + deliveryFee;
+          final customerFullName = '$firstName $secondName'.trim();
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 720),
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            IconButton(
+                              icon: const Icon(Icons.arrow_back, size: 20),
+                              tooltip: 'Edit Details',
+                              onPressed: () {
+                                Navigator.pop(summaryCtx);
+                                _showCheckoutCustomerForm(
+                                  initialFirstName: firstName,
+                                  initialSecondName: secondName,
+                                  initialMiddleName: middleName,
+                                  initialBirthday: birthday,
+                                  initialAddress: address,
+                                  initialPhone: phone,
+                                  initialEmail: email,
+                                  initialOrderType: orderType,
+                                );
+                              },
+                            ),
+                            const SizedBox(width: 4),
+                            const Text(
+                              'Order Summary',
+                              style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(summaryCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Scrollable summary content
+                    Expanded(
+                      child: SingleChildScrollView(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            // Customer & Order Option Card
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF9FAFB),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        customerFullName,
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
+                                      ),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                        decoration: BoxDecoration(
+                                          color: brandColor.withValues(alpha: 0.1),
+                                          borderRadius: BorderRadius.circular(6),
+                                        ),
+                                        child: Text(
+                                          _getOrderTypeDisplay(orderType),
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: brandColor),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Text('📞 Phone: $phone', style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563))),
+                                  if (orderType == 'delivery' && address.isNotEmpty) ...[
+                                    const SizedBox(height: 2),
+                                    Text('🏠 Address: $address', style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563))),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+
+                            // Itemized Cart Summary
+                            Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(color: const Color(0xFFE5E7EB)),
+                              ),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Row(
+                                        children: [
+                                          Icon(Icons.shopping_bag_outlined, size: 16, color: brandColor),
+                                          SizedBox(width: 6),
+                                          Text(
+                                            'Items Summary',
+                                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
+                                          ),
+                                        ],
+                                      ),
+                                      Text(
+                                        '${_cart.length} ${_cart.length == 1 ? 'item' : 'items'}',
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontWeight: FontWeight.w500),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 8),
+                                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                                  const SizedBox(height: 8),
+                                  ..._cart.map((cartItem) {
+                                    return Padding(
+                                      padding: const EdgeInsets.symmetric(vertical: 3),
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              '${cartItem.qty}x  ${cartItem.item.name}',
+                                              style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          Text(
+                                            '₱${(cartItem.item.price * cartItem.qty).toStringAsFixed(2)}',
+                                            style: const TextStyle(fontSize: 12, color: Color(0xFF111827), fontWeight: FontWeight.w600),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  }),
+                                  const SizedBox(height: 8),
+                                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                                  const SizedBox(height: 8),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Subtotal', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                                      Text('₱${cartTotal.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w600)),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Row(
+                                        children: [
+                                          const Text('Delivery Fee', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
+                                          if (orderType != 'delivery')
+                                            const Text(' (Waived)', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
+                                        ],
+                                      ),
+                                      Text(
+                                        orderType == 'delivery' ? '₱10.00' : '₱0.00',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: orderType == 'delivery' ? const Color(0xFF374151) : Colors.green,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  const SizedBox(height: 6),
+                                  const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                                  const SizedBox(height: 6),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      const Text('Total Amount', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827))),
+                                      Text(
+                                        '₱${checkoutTotal.toStringAsFixed(2)}',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15, color: brandColor),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ),
                             const SizedBox(height: 14),
+
+                            // Payment Method Selection
                             Row(
                               children: [
                                 const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
@@ -439,14 +820,14 @@ class _HomeScreenState extends State<HomeScreen> {
                                 ChoiceChip(
                                   label: const Text('GCash / QR'),
                                   selected: selectedPaymentMethod == 'gcash',
-                                  onSelected: (_) => setDlgState(() => selectedPaymentMethod = 'gcash'),
+                                  onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'gcash'),
                                   selectedColor: brandColor.withValues(alpha: 0.2),
                                 ),
                                 const SizedBox(width: 8),
                                 ChoiceChip(
                                   label: const Text('COD'),
                                   selected: selectedPaymentMethod == 'cod',
-                                  onSelected: (_) => setDlgState(() => selectedPaymentMethod = 'cod'),
+                                  onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'cod'),
                                   selectedColor: brandColor.withValues(alpha: 0.2),
                                 ),
                               ],
@@ -466,22 +847,9 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () async {
-                          if (firstNameCtrl.text.trim().isEmpty ||
-                              addressCtrl.text.trim().isEmpty ||
-                              phoneCtrl.text.trim().isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Please fill in required fields (Name, Address, Phone)'),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                            return;
-                          }
-
                           final orderItems = _cart.map((c) => {'id': c.item.id, 'qty': c.qty}).toList();
-                          final customerFullName = '${firstNameCtrl.text} ${secondNameCtrl.text}'.trim();
 
-                          Navigator.pop(dlgCtx);
+                          Navigator.pop(summaryCtx);
 
                           showDialog(
                             context: context,
@@ -491,14 +859,14 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           try {
                             final submittedUser = UserModel(
-                              firstName: firstNameCtrl.text,
-                              secondName: secondNameCtrl.text,
-                              middleName: middleNameCtrl.text,
-                              birthday: birthdayCtrl.text,
-                              address: addressCtrl.text,
-                              phoneNumber: phoneCtrl.text,
-                              emailAddress: emailCtrl.text,
-                              isVerified: currentVerifiedMode,
+                              firstName: firstName,
+                              secondName: secondName,
+                              middleName: middleName,
+                              birthday: birthday,
+                              address: address,
+                              phoneNumber: phone,
+                              emailAddress: email,
+                              isVerified: isVerified,
                             );
                             setState(() => _currentUser = submittedUser);
                             FirebaseUserService.saveUserProfileToFirebase(submittedUser);
@@ -506,16 +874,24 @@ class _HomeScreenState extends State<HomeScreen> {
                             final result = await CheckoutService.submitOrder(
                               items: orderItems,
                               paymentMethod: selectedPaymentMethod,
+                              orderType: orderType,
                               customerName: customerFullName,
-                              customerPhone: phoneCtrl.text,
-                              deliveryAddress: addressCtrl.text,
-                              firstName: firstNameCtrl.text,
-                              secondName: secondNameCtrl.text,
-                              middleName: middleNameCtrl.text,
-                              birthday: birthdayCtrl.text,
-                              emailAddress: emailCtrl.text,
-                              isVerified: currentVerifiedMode,
+                              customerPhone: phone,
+                              deliveryAddress: address,
+                              firstName: firstName,
+                              secondName: secondName,
+                              middleName: middleName,
+                              birthday: birthday,
+                              emailAddress: email,
+                              isVerified: isVerified,
                             );
+
+                            if (result.containsKey('order_number')) {
+                              final newOrderNum = result['order_number'].toString();
+                              if (!_sessionOrderNumbers.contains(newOrderNum)) {
+                                _sessionOrderNumbers.add(newOrderNum);
+                              }
+                            }
 
                             Navigator.pop(context); // Pop loading
                             setState(() => _cart.clear());
@@ -527,6 +903,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                   orderNumber: result['order_number'],
                                   totalAmount: (result['total_amount'] as num).toDouble(),
                                   qrImageUrl: result['qr_image_url'],
+                                  orderType: orderType,
+                                  subtotal: cartTotal.toDouble(),
+                                  deliveryFee: deliveryFee.toDouble(),
                                   onPaymentComplete: () {
                                     _showOrdersModal();
                                   },
@@ -553,7 +932,7 @@ class _HomeScreenState extends State<HomeScreen> {
                           }
                         },
                         child: Text(
-                          'Place Order • ₱$cartTotal',
+                          'Place Order • ₱$checkoutTotal',
                           style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.bold),
                         ),
                       ),
@@ -568,20 +947,43 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  String _getOrderTypeDisplay(String type) {
+    switch (type.toLowerCase()) {
+      case 'dine_in':
+        return '🍽️ Dine In';
+      case 'takeout':
+        return '🛍️ Takeout';
+      case 'delivery':
+      default:
+        return '🛵 Delivery';
+    }
+  }
+
   Widget _buildFormField(String label, TextEditingController controller, IconData icon) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(label, style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black87)),
-        const SizedBox(height: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF374151)),
+        ),
+        const SizedBox(height: 6),
         TextField(
           controller: controller,
-          style: const TextStyle(fontSize: 13),
           decoration: InputDecoration(
+            prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             isDense: true,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            prefixIcon: Icon(icon, size: 16, color: Colors.grey),
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+            filled: true,
+            fillColor: const Color(0xFFF9FAFB),
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(10),
+              borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: brandColor),
@@ -597,7 +999,10 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
-      builder: (ctx) => const OrderHistorySheet(),
+      builder: (ctx) => OrderHistorySheet(
+        sessionOrderNumbers: _sessionOrderNumbers,
+        userPhone: _currentUser.phoneNumber,
+      ),
     );
   }
 

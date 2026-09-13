@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/users_table_model.dart';
 import 'firebase_order_service.dart';
+import 'firebase_user_service.dart';
 
 /// FirebaseUsersTableService manages Cloud Firestore real-time streaming,
 /// fetching, creation, updating, and deletion of records in the `users_table` collection.
@@ -22,11 +23,12 @@ class FirebaseUsersTableService {
     }
   }
 
-  /// Fetch all documents from Cloud Firestore `users_table` collection & Laravel DB
+  /// Fetch all documents from Cloud Firestore `users_table` & `users` collections & Laravel DB
   static Future<List<UsersTableModel>> fetchUsersFromFirestore() async {
+    final Map<String, UsersTableModel> userMap = {};
     final projectId = FirebaseOrderService.firebaseProjectId;
 
-    // 1. Fetch from Firebase Cloud Firestore
+    // 1. Fetch from Firebase Cloud Firestore `users_table` collection
     if (projectId.isNotEmpty) {
       final url = Uri.parse(
         'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users_table',
@@ -37,27 +39,68 @@ class FirebaseUsersTableService {
         if (response.statusCode == 200) {
           final Map<String, dynamic> data = json.decode(response.body);
           final List<dynamic> documents = data['documents'] ?? [];
-          return documents
-              .map((doc) => UsersTableModel.fromFirestore(doc))
-              .toList();
+          for (final doc in documents) {
+            final model = UsersTableModel.fromFirestore(doc);
+            if (model.emailAddress.isNotEmpty) {
+              userMap[model.emailAddress.toLowerCase()] = model;
+            }
+          }
+        }
+      } catch (_) {}
+
+      // 2. Fetch from Firebase Cloud Firestore `users` collection
+      try {
+        final usersUrl = Uri.parse(
+          'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users',
+        );
+        final response = await http.get(usersUrl);
+        if (response.statusCode == 200) {
+          final Map<String, dynamic> data = json.decode(response.body);
+          final List<dynamic> documents = data['documents'] ?? [];
+          for (final doc in documents) {
+            final model = UsersTableModel.fromFirestore(doc);
+            if (model.emailAddress.isNotEmpty) {
+              userMap.putIfAbsent(model.emailAddress.toLowerCase(), () => model);
+            }
+          }
         }
       } catch (_) {}
     }
 
-    // 2. Fallback to Laravel REST API if Firebase returns empty or network error
+    // 3. Sync/Fetch from Laravel REST API
     try {
       final laravelUrl = Uri.parse('http://127.0.0.1:8000/api/users-table');
       final response = await http.get(laravelUrl);
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        return data.map((json) => UsersTableModel.fromJson(json)).toList();
+        for (final jsonItem in data) {
+          final model = UsersTableModel.fromJson(jsonItem);
+          if (model.emailAddress.isNotEmpty) {
+            userMap.putIfAbsent(model.emailAddress.toLowerCase(), () => model);
+          }
+        }
       }
     } catch (_) {}
 
-    return [];
+    // 4. Include current active verified user if available
+    final activeUser = FirebaseUserService.currentUser;
+    if (activeUser.isVerified && activeUser.emailAddress.isNotEmpty && !activeUser.isAdmin) {
+      final model = UsersTableModel(
+        firstName: activeUser.firstName,
+        middleName: activeUser.middleName,
+        lastName: activeUser.secondName,
+        birthday: activeUser.birthday,
+        address: activeUser.address,
+        emailAddress: activeUser.emailAddress,
+        phoneNumber: activeUser.phoneNumber,
+      );
+      userMap.putIfAbsent(model.emailAddress.toLowerCase(), () => model);
+    }
+
+    return userMap.values.toList();
   }
 
-  /// Add or update a user in Firestore `users_table` collection & Laravel DB
+  /// Add or update a user in Firestore `users_table` & `users` collections & Laravel DB
   static Future<bool> saveUserToFirestore(UsersTableModel user) async {
     final docId = user.emailAddress.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
 
@@ -71,27 +114,50 @@ class FirebaseUsersTableService {
       );
     } catch (_) {}
 
-    // 2. Sync to Cloud Firestore REST API
+    // 2. Sync to Cloud Firestore REST API (`users_table` and `users` collections)
     final projectId = FirebaseOrderService.firebaseProjectId;
     if (projectId.isEmpty) return true;
 
-    final url = Uri.parse(
+    final usersTableUrl = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users_table/$docId',
+    );
+    final usersUrl = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users/$docId',
     );
 
     try {
-      final response = await http.patch(
-        url,
+      await http.patch(
+        usersTableUrl,
         headers: {'Content-Type': 'application/json'},
         body: json.encode(user.toFirestoreFields()),
       );
-      return response.statusCode == 200;
-    } catch (_) {
-      return true;
-    }
+    } catch (_) {}
+
+    try {
+      final userFieldsPayload = {
+        'fields': {
+          'first_name': {'stringValue': user.firstName},
+          'second_name': {'stringValue': user.lastName},
+          'middle_name': {'stringValue': user.middleName},
+          'birthday': {'stringValue': user.birthday},
+          'address': {'stringValue': user.address},
+          'phone_number': {'stringValue': user.phoneNumber},
+          'email_address': {'stringValue': user.emailAddress},
+          'is_verified': {'booleanValue': true},
+        }
+      };
+
+      await http.patch(
+        usersUrl,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode(userFieldsPayload),
+      );
+    } catch (_) {}
+
+    return true;
   }
 
-  /// Delete a user document from Firestore `users_table` collection & Laravel DB
+  /// Delete a user document from Firestore `users_table` & `users` collections & Laravel DB
   static Future<bool> deleteUserFromFirestore(String emailAddress) async {
     final docId = emailAddress.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
 
@@ -105,15 +171,20 @@ class FirebaseUsersTableService {
     final projectId = FirebaseOrderService.firebaseProjectId;
     if (projectId.isEmpty) return true;
 
-    final url = Uri.parse(
+    final usersTableUrl = Uri.parse(
       'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users_table/$docId',
+    );
+    final usersUrl = Uri.parse(
+      'https://firestore.googleapis.com/v1/projects/$projectId/databases/(default)/documents/users/$docId',
     );
 
     try {
-      final response = await http.delete(url);
-      return response.statusCode == 200;
+      await http.delete(usersTableUrl);
+      await http.delete(usersUrl);
+      return true;
     } catch (_) {
       return true;
     }
   }
 }
+

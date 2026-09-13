@@ -6,6 +6,7 @@ class CheckoutService {
   static Future<Map<String, dynamic>> submitOrder({
     required List<Map<String, dynamic>> items,
     required String paymentMethod,
+    String orderType = 'delivery',
     required String customerName,
     required String customerPhone,
     required String deliveryAddress,
@@ -23,6 +24,7 @@ class CheckoutService {
         body: json.encode({
           'items': items,
           'payment_method': paymentMethod,
+          'order_type': orderType,
           'customer_name': customerName,
           'customer_phone': customerPhone,
           'delivery_address': deliveryAddress,

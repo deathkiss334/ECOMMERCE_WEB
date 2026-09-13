@@ -5,6 +5,9 @@ class QrPaymentModal extends StatefulWidget {
   final String orderNumber;
   final double totalAmount;
   final String qrImageUrl;
+  final String? orderType;
+  final double? subtotal;
+  final double? deliveryFee;
   final VoidCallback onPaymentComplete;
 
   const QrPaymentModal({
@@ -12,6 +15,9 @@ class QrPaymentModal extends StatefulWidget {
     required this.orderNumber,
     required this.totalAmount,
     required this.qrImageUrl,
+    this.orderType,
+    this.subtotal,
+    this.deliveryFee,
     required this.onPaymentComplete,
   });
 
@@ -59,6 +65,18 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
     }
   }
 
+  String _getOrderTypeDisplay(String? type) {
+    switch (type?.toLowerCase()) {
+      case 'dine_in':
+        return '🍽️ Dine In';
+      case 'takeout':
+        return '🛍️ Takeout';
+      case 'delivery':
+      default:
+        return '🛵 Delivery';
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Dialog(
@@ -90,31 +108,58 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
             ),
             const SizedBox(height: 12),
 
-            // Order Number & Amount Banner
+            // Order Number & Breakdown Banner
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.all(14),
               decoration: BoxDecoration(
                 color: const Color(0xFFF9FAFB),
                 borderRadius: BorderRadius.circular(14),
                 border: Border.all(color: const Color(0xFFE5E7EB)),
               ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              child: Column(
                 children: [
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      const Text('Order Number', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-                      Text(widget.orderNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Text('Order Number', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                          Row(
+                            children: [
+                              Text(widget.orderNumber, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF111827))),
+                              if (widget.orderType != null) ...[
+                                const SizedBox(width: 6),
+                                Text(_getOrderTypeDisplay(widget.orderType), style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600)),
+                              ],
+                            ],
+                          ),
+                        ],
+                      ),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text('Total Payment', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                          Text('₱${widget.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: QrPaymentModal.brandColor)),
+                        ],
+                      ),
                     ],
                   ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    children: [
-                      const Text('Total Amount', style: TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
-                      Text('₱${widget.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: QrPaymentModal.brandColor)),
-                    ],
-                  ),
+                  if (widget.subtotal != null && widget.deliveryFee != null) ...[
+                    const SizedBox(height: 8),
+                    const Divider(height: 1, color: Color(0xFFE5E7EB)),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text('Subtotal: ₱${widget.subtotal!.toStringAsFixed(2)}', style: const TextStyle(fontSize: 11, color: Color(0xFF6B7280))),
+                        Text(
+                          widget.deliveryFee! > 0 ? 'Delivery Fee: +₱${widget.deliveryFee!.toStringAsFixed(2)}' : 'Delivery Fee: Waived (₱0)',
+                          style: TextStyle(fontSize: 11, color: widget.deliveryFee! > 0 ? const Color(0xFF6B7280) : Colors.green, fontWeight: FontWeight.w500),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),

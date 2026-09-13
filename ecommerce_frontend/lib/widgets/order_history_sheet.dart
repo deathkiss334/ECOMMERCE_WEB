@@ -3,7 +3,14 @@ import '../models/order_model.dart';
 import '../services/api_service.dart';
 
 class OrderHistorySheet extends StatefulWidget {
-  const OrderHistorySheet({super.key});
+  final List<String>? sessionOrderNumbers;
+  final String? userPhone;
+
+  const OrderHistorySheet({
+    super.key,
+    this.sessionOrderNumbers,
+    this.userPhone,
+  });
 
   static const Color brandColor = Color(0xFFE8411E);
 
@@ -22,7 +29,10 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
 
   void _loadOrders() {
     setState(() {
-      _ordersFuture = ApiService.getOrders();
+      _ordersFuture = ApiService.getOrders(
+        orderNumbers: widget.sessionOrderNumbers,
+        phone: widget.userPhone,
+      );
     });
   }
 
@@ -188,9 +198,25 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                order.orderNumber,
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+              Row(
+                children: [
+                  Text(
+                    order.orderNumber,
+                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+                  ),
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: OrderHistorySheet.brandColor.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      order.orderTypeDisplay,
+                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: OrderHistorySheet.brandColor),
+                    ),
+                  ),
+                ],
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -215,24 +241,43 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
 
           // Items summary
           Column(
-            children: order.items.map((item) {
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      '${item.quantity}x  ${item.productName}',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w500),
-                    ),
-                    Text(
-                      '₱${item.totalPrice.toStringAsFixed(2)}',
-                      style: const TextStyle(fontSize: 12, color: Color(0xFF111827), fontWeight: FontWeight.w600),
-                    ),
-                  ],
+            children: [
+              ...order.items.map((item) {
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 2),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        '${item.quantity}x  ${item.productName}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+                      ),
+                      Text(
+                        '₱${item.totalPrice.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 12, color: Color(0xFF111827), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                );
+              }),
+              if (order.deliveryFee > 0)
+                Padding(
+                  padding: const EdgeInsets.only(top: 4),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        '🛵 Delivery Fee',
+                        style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontStyle: FontStyle.italic),
+                      ),
+                      Text(
+                        '₱${order.deliveryFee.toStringAsFixed(2)}',
+                        style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
                 ),
-              );
-            }).toList(),
+            ],
           ),
 
           const SizedBox(height: 10),

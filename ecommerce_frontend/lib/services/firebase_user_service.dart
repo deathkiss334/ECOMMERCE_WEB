@@ -1,16 +1,18 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
+import '../models/users_table_model.dart';
 import 'firebase_order_service.dart';
+import 'firebase_users_table_service.dart';
 
 /// FirebaseUserService manages real-time Cloud Firestore fetching
 /// and local caching for Verified Users vs Guest Accounts.
 class FirebaseUserService {
   static UserModel? _cachedUser;
 
-  /// Get current user (defaults to Verified User demo profile)
+  /// Get current user (defaults to Guest account profile)
   static UserModel get currentUser {
-    return _cachedUser ?? UserModel.defaultVerified();
+    return _cachedUser ?? UserModel.guest();
   }
 
   /// Set local current user mode (Verified vs Guest)
@@ -27,7 +29,9 @@ class FirebaseUserService {
     }
 
     if (!FirebaseOrderService.isFirebaseConfigured) {
-      return UserModel.defaultVerified();
+      final defaultUser = UserModel.defaultVerified();
+      _cachedUser = defaultUser;
+      return defaultUser;
     }
 
     try {
@@ -43,7 +47,7 @@ class FirebaseUserService {
 
         final user = UserModel(
           firstName: fields['first_name']?['stringValue'] ?? '',
-          secondName: fields['second_name']?['stringValue'] ?? '',
+          secondName: fields['second_name']?['stringValue'] ?? fields['last_name']?['stringValue'] ?? '',
           middleName: fields['middle_name']?['stringValue'] ?? '',
           birthday: fields['birthday']?['stringValue'] ?? '',
           address: fields['address']?['stringValue'] ?? '',
@@ -57,17 +61,35 @@ class FirebaseUserService {
       }
     } catch (_) {}
 
-    return UserModel.defaultVerified();
+    final defaultUser = UserModel.defaultVerified();
+    _cachedUser = defaultUser;
+    return defaultUser;
   }
 
-  /// Push/Sync Verified User profile updates to Firebase Cloud Firestore
+  /// Push/Sync Verified User profile updates to Firebase Cloud Firestore and users_table
   static Future<bool> saveUserProfileToFirebase(UserModel user) async {
     _cachedUser = user;
+
+    final usersTableModel = UsersTableModel(
+      firstName: user.firstName,
+      middleName: user.middleName,
+      lastName: user.secondName,
+      birthday: user.birthday,
+      address: user.address,
+      emailAddress: user.emailAddress,
+      phoneNumber: user.phoneNumber,
+    );
+
+    // 1. Sync to users_table collection & Laravel REST API
+    try {
+      await FirebaseUsersTableService.saveUserToFirestore(usersTableModel);
+    } catch (_) {}
 
     if (!user.isVerified || !FirebaseOrderService.isFirebaseConfigured) {
       return true;
     }
 
+    // 2. Sync to users collection in Cloud Firestore REST API
     try {
       final docId = user.emailAddress.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
       final url = Uri.parse(
@@ -100,3 +122,4 @@ class FirebaseUserService {
     }
   }
 }
+

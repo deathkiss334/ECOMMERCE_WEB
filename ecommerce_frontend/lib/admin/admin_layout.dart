@@ -1,8 +1,12 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'dashboard_view.dart';
+import 'orders_view.dart';
 import 'users_view.dart';
 import 'products_view.dart';
 import 'analytics_view.dart';
+import '../models/order_model.dart';
+import '../services/firebase_order_service.dart';
 
 class AdminLayout extends StatefulWidget {
   const AdminLayout({super.key});
@@ -13,13 +17,38 @@ class AdminLayout extends StatefulWidget {
 
 class _AdminLayoutState extends State<AdminLayout> {
   int _selectedIndex = 0;
+  int _newOrdersCount = 0;
+  int _overdueOrdersCount = 0;
+  StreamSubscription<List<OrderModel>>? _ordersSub;
 
   final List<Widget> _views = [
     const DashboardView(),
+    const OrdersView(),
     const UsersView(),
     const ProductsView(),
     const AnalyticsView(),
   ];
+
+  @override
+  void initState() {
+    super.initState();
+    _ordersSub = FirebaseOrderService.streamAllAdminOrders().listen((orders) {
+      if (mounted) {
+        final pending = orders.where((o) => o.status.toLowerCase() == 'pending').length;
+        final overdue = orders.where((o) => o.isOverdue).length;
+        setState(() {
+          _newOrdersCount = pending;
+          _overdueOrdersCount = overdue;
+        });
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _ordersSub?.cancel();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -50,9 +79,10 @@ class _AdminLayoutState extends State<AdminLayout> {
                 const Divider(height: 1),
                 const SizedBox(height: 16),
                 _buildNavItem(0, Icons.dashboard_outlined, 'Dashboard'),
-                _buildNavItem(1, Icons.people_outline, 'User Management'),
-                _buildNavItem(2, Icons.inventory_2_outlined, 'Product Management'),
-                _buildNavItem(3, Icons.analytics_outlined, 'Sales Analytics'),
+                _buildNavItem(1, Icons.shopping_bag_outlined, 'Order Management', badgeCount: _newOrdersCount, isUrgent: _overdueOrdersCount > 0),
+                _buildNavItem(2, Icons.people_outline, 'User Management'),
+                _buildNavItem(3, Icons.inventory_2_outlined, 'Product Management'),
+                _buildNavItem(4, Icons.analytics_outlined, 'Sales Analytics'),
                 const Spacer(),
                 const Divider(height: 1),
                 Padding(
@@ -99,7 +129,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                               Expanded(
                                 child: TextField(
                                   decoration: InputDecoration(
-                                    hintText: 'Search...',
+                                    hintText: 'Search admin portal...',
                                     border: InputBorder.none,
                                     isDense: true,
                                     contentPadding: EdgeInsets.zero,
@@ -110,12 +140,37 @@ class _AdminLayoutState extends State<AdminLayout> {
                           ),
                         ),
                       ),
-                      // Profile
+                      // Profile & Notifications
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(Icons.notifications_outlined),
-                            onPressed: () {},
+                          Stack(
+                            clipBehavior: Clip.none,
+                            children: [
+                              IconButton(
+                                icon: const Icon(Icons.notifications_outlined),
+                                onPressed: () {
+                                  setState(() => _selectedIndex = 1);
+                                },
+                              ),
+                              if (_newOrdersCount > 0)
+                                Positioned(
+                                  right: 6,
+                                  top: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: _overdueOrdersCount > 0 ? const Color(0xFFDC2626) : const Color(0xFFF59E0B),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                                    child: Text(
+                                      '$_newOrdersCount',
+                                      style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                      textAlign: TextAlign.center,
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(width: 16),
                           const CircleAvatar(
@@ -141,22 +196,38 @@ class _AdminLayoutState extends State<AdminLayout> {
     );
   }
 
-  Widget _buildNavItem(int index, IconData icon, String title) {
+  Widget _buildNavItem(int index, IconData icon, String title, {int badgeCount = 0, bool isUrgent = false}) {
     final isSelected = _selectedIndex == index;
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 4.0),
+      padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 2.0),
       child: ListTile(
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 0.0),
         leading: Icon(
           icon,
           color: isSelected ? Theme.of(context).colorScheme.primary : Colors.black87,
         ),
         title: Text(
           title,
+          overflow: TextOverflow.ellipsis,
           style: TextStyle(
             color: isSelected ? Theme.of(context).colorScheme.primary : Colors.black87,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 14,
           ),
         ),
+        trailing: badgeCount > 0
+            ? Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFFF59E0B),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Text(
+                  '$badgeCount',
+                  style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
+                ),
+              )
+            : null,
         selected: isSelected,
         selectedTileColor: Theme.of(context).colorScheme.primary.withValues(alpha: 0.1),
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
