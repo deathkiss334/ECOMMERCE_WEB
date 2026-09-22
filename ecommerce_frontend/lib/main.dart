@@ -10,6 +10,7 @@ import 'services/firebase_user_service.dart';
 import 'admin/admin_layout.dart';
 import 'auth/login_page.dart';
 import 'auth/signup_page.dart';
+import 'landing_page.dart';
 
 
 void main() {
@@ -117,12 +118,12 @@ final List<FoodItem> defaultFoodCatalog = const [
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
 
-  static const Color brandColor = Color(0xFFE8411E);
+  static const Color brandColor = Color(0xFFF36F21);
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Food Delivery Web UI',
+      title: 'DasmaBITES - Your Favorite Bites, Just a Click Away!',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,
@@ -134,8 +135,9 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF9FAFB),
         fontFamily: 'Roboto',
       ),
-      home: const HomeScreen(),
+      home: const LandingPage(),
       routes: {
+        '/shop': (context) => const HomeScreen(),
         '/admin': (context) => const AdminLayout(),
         '/login': (context) => const LoginPage(),
         '/signup': (context) => const SignupPage(),
@@ -1120,6 +1122,11 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const Spacer(),
+          IconButton(
+            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+            icon: const Icon(Icons.home_outlined, color: Color(0xFF212121), size: 24),
+            tooltip: 'Home Landing',
+          ),
           // Cart Button in Header for fast access
           Stack(
             clipBehavior: Clip.none,
