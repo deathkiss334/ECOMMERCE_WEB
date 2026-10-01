@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firebase_user_service.dart';
+import '../widgets/google_auth_widgets.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -14,12 +15,29 @@ class _LoginPageState extends State<LoginPage> {
   final _passwordCtrl = TextEditingController();
 
   bool _isSubmitting = false;
+  bool _isGoogleSubmitting = false;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isGoogleSubmitting = true);
+
+    try {
+      final user = await GoogleAuthFlow.startGoogleSignIn(context);
+
+      setState(() => _isGoogleSubmitting = false);
+
+      if (user != null && mounted) {
+        Navigator.pushReplacementNamed(context, '/shop');
+      }
+    } catch (e) {
+      setState(() => _isGoogleSubmitting = false);
+    }
   }
 
   Future<void> _handleLogin() async {
@@ -137,7 +155,34 @@ class _LoginPageState extends State<LoginPage> {
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 28),
+                  const SizedBox(height: 24),
+
+                  // Continue with Google Button
+                  GoogleSignInButton(
+                    onPressed: _handleGoogleSignIn,
+                    isLoading: _isGoogleSubmitting,
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Divider
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'OR LOG IN WITH EMAIL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey.shade500,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   TextField(
                     controller: _emailCtrl,
                     decoration: InputDecoration(

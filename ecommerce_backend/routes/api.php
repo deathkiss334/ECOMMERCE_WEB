@@ -59,3 +59,14 @@ Route::delete('/product-table/{id}', [\App\Http\Controllers\Api\ProductTableCont
 Route::get('/users-table', [\App\Http\Controllers\Api\UsersTableController::class, 'index']);
 Route::post('/users-table', [\App\Http\Controllers\Api\UsersTableController::class, 'store']);
 Route::delete('/users-table/{id}', [\App\Http\Controllers\Api\UsersTableController::class, 'destroy']);
+Route::post('/auth/send-otp', [\App\Http\Controllers\Api\AuthController::class, 'sendOtp']);
+Route::post('/auth/verify-otp', [\App\Http\Controllers\Api\AuthController::class, 'verifyOtp']);
+
+// ── Customer Google Sign-In (public — no auth required) ──────────────────────
+Route::post('/auth/google', [\App\Http\Controllers\Api\CustomerAuthController::class, 'googleSignIn']);
+
+// ── Customer-Protected Routes (requires Sanctum token + customer:access) ─────
+Route::middleware(['auth:sanctum', 'ability:customer:access'])->prefix('customer')->group(function () {
+    Route::get('/me', [\App\Http\Controllers\Api\CustomerAuthController::class, 'me']);
+    Route::post('/logout', [\App\Http\Controllers\Api\CustomerAuthController::class, 'logout']);
+});

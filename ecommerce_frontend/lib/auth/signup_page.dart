@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firebase_user_service.dart';
+import '../widgets/google_auth_widgets.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -20,6 +21,7 @@ class _SignupPageState extends State<SignupPage> {
   final _passwordCtrl = TextEditingController();
 
   bool _isSubmitting = false;
+  bool _isGoogleSubmitting = false;
 
   @override
   void dispose() {
@@ -32,6 +34,37 @@ class _SignupPageState extends State<SignupPage> {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
+  }
+
+  Future<void> _handleGoogleSignup() async {
+    setState(() => _isGoogleSubmitting = true);
+    try {
+      final user = await GoogleAuthFlow.startGoogleSignIn(context);
+      setState(() => _isGoogleSubmitting = false);
+
+      if (user != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const GoogleLogoIcon(size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Welcome to DasmaBITES, ${user.firstName}! 🚀',
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF1E88E5),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/shop');
+      }
+    } catch (e) {
+      setState(() => _isGoogleSubmitting = false);
+    }
   }
 
   Future<void> _handleSignup() async {
@@ -127,6 +160,34 @@ class _SignupPageState extends State<SignupPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
+
+                  // Continue with Google Option
+                  GoogleSignInButton(
+                    onPressed: _handleGoogleSignup,
+                    isLoading: _isGoogleSubmitting,
+                    text: 'Sign up with Google',
+                  ),
+                  const SizedBox(height: 18),
+
+                  Row(
+                    children: [
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 10),
+                        child: Text(
+                          'OR SIGN UP WITH EMAIL',
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: Colors.grey.shade600,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider(color: Colors.grey.shade300)),
+                    ],
+                  ),
+                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
