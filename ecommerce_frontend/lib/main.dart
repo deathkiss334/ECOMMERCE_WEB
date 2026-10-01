@@ -135,7 +135,7 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFFF9FAFB),
         fontFamily: 'Roboto',
       ),
-      home: const LandingPage(),
+      initialRoute: '/',
       routes: {
         '/': (context) => const LandingPage(),
         '/shop': (context) => const HomeScreen(),
