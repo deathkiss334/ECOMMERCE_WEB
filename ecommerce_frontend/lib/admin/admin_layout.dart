@@ -91,7 +91,11 @@ class _AdminLayoutState extends State<AdminLayout> {
                     leading: const Icon(Icons.arrow_back),
                     title: const Text('Back to Store'),
                     onTap: () {
-                      Navigator.pop(context);
+                      if (Navigator.canPop(context)) {
+                        Navigator.pop(context);
+                      } else {
+                        Navigator.pushReplacementNamed(context, '/shop');
+                      }
                     },
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     hoverColor: Colors.grey.shade100,

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firebase_user_service.dart';
-import 'login_page.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -79,10 +78,7 @@ class _SignupPageState extends State<SignupPage> {
       ),
     );
 
-    Navigator.pushReplacement(
-      context,
-      MaterialPageRoute(builder: (context) => const LoginPage()),
-    );
+    Navigator.pushReplacementNamed(context, '/login');
   }
 
   @override
@@ -120,44 +116,48 @@ class _SignupPageState extends State<SignupPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Sign Up as Verified User',
-                    style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                    'Join DasmaBITES',
+                    style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Fill in your details once for instant auto-fill during checkout',
+                    'Sign up to get instant discounts & free deliveries!',
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField('First Name *', _firstNameCtrl, Icons.person)),
+                      Expanded(
+                        child: _buildTextField('First Name *', _firstNameCtrl, Icons.person_outline),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildTextField('Second (Last) Name *', _secondNameCtrl, Icons.person_outline)),
+                      Expanded(
+                        child: _buildTextField('Second Name *', _secondNameCtrl, Icons.person_outline),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Row(
                     children: [
-                      Expanded(child: _buildTextField('Middle Name', _middleNameCtrl, Icons.badge)),
+                      Expanded(
+                        child: _buildTextField('Middle Name (Optional)', _middleNameCtrl, Icons.badge_outlined),
+                      ),
                       const SizedBox(width: 12),
-                      Expanded(child: _buildTextField('Birthday (YYYY-MM-DD)', _birthdayCtrl, Icons.cake)),
+                      Expanded(
+                        child: _buildTextField('Birthday (YYYY-MM-DD)', _birthdayCtrl, Icons.cake_outlined),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  _buildTextField('Address *', _addressCtrl, Icons.home),
+                  _buildTextField('Complete Address *', _addressCtrl, Icons.home_outlined),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(child: _buildTextField('Phone Number *', _phoneCtrl, Icons.phone)),
-                      const SizedBox(width: 12),
-                      Expanded(child: _buildTextField('Email Address *', _emailCtrl, Icons.email)),
-                    ],
-                  ),
+                  _buildTextField('Phone Number *', _phoneCtrl, Icons.phone_outlined),
                   const SizedBox(height: 12),
-                  _buildTextField('Password *', _passwordCtrl, Icons.lock, obscureText: true),
+                  _buildTextField('Email Address *', _emailCtrl, Icons.email_outlined),
+                  const SizedBox(height: 12),
+                  _buildTextField('Password *', _passwordCtrl, Icons.lock_outline, obscureText: true),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _handleSignup,
@@ -166,7 +166,7 @@ class _SignupPageState extends State<SignupPage> {
                       backgroundColor: brandColor,
                       foregroundColor: Colors.white,
                       shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                     ),
                     child: _isSubmitting
@@ -176,7 +176,7 @@ class _SignupPageState extends State<SignupPage> {
                             child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                           )
                         : const Text(
-                            'Create Verified Account',
+                            'Sign Up',
                             style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                           ),
                   ),
@@ -184,13 +184,10 @@ class _SignupPageState extends State<SignupPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Already have an account?", style: TextStyle(fontSize: 13)),
+                      const Text('Already have an account?', style: TextStyle(fontSize: 13)),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(builder: (context) => const LoginPage()),
-                          );
+                          Navigator.pushReplacementNamed(context, '/login');
                         },
                         child: const Text('Log In', style: TextStyle(fontWeight: FontWeight.bold)),
                       ),

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 import '../services/firebase_user_service.dart';
-import 'signup_page.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -75,7 +74,8 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
 
-    Navigator.popUntil(context, (route) => route.isFirst);
+    // Navigate to shop instead of popping back to landing page
+    Navigator.pushReplacementNamed(context, '/shop');
   }
 
   void _handleAdminQuickLogin() {
@@ -226,12 +226,7 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => const SignupPage(),
-                            ),
-                          );
+                          Navigator.pushReplacementNamed(context, '/signup');
                         },
                         child: const Text(
                           'Sign Up',

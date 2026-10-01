@@ -38,113 +38,118 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: MediaQuery.of(context).size.height * 0.85,
-      decoration: const BoxDecoration(
-        color: Color(0xFFF9FAFB),
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      child: Column(
-        children: [
-          // Header handle
-          Container(
-            margin: const EdgeInsets.only(top: 12, bottom: 8),
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: const Color(0xFFE5E7EB),
-              borderRadius: BorderRadius.circular(2),
-            ),
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          height: MediaQuery.of(context).size.height * 0.85,
+          decoration: const BoxDecoration(
+            color: Color(0xFFF9FAFB),
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Row(
-                  children: const [
-                    Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 24),
-                    SizedBox(width: 8),
-                    Text(
-                      'My Orders & Tracking',
-                      style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+          child: Column(
+            children: [
+              // Header handle
+              Container(
+                margin: const EdgeInsets.only(top: 12, bottom: 8),
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: const Color(0xFFE5E7EB),
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: const [
+                        Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 24),
+                        SizedBox(width: 8),
+                        Text(
+                          'My Orders & Tracking',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                        ),
+                      ],
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.refresh, color: Color(0xFF4B5563)),
+                      onPressed: _loadOrders,
+                      tooltip: 'Refresh orders',
                     ),
                   ],
                 ),
-                IconButton(
-                  icon: const Icon(Icons.refresh, color: Color(0xFF4B5563)),
-                  onPressed: _loadOrders,
-                  tooltip: 'Refresh orders',
-                ),
-              ],
-            ),
-          ),
-          const Divider(height: 1, color: Color(0xFFE5E7EB)),
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
 
-          // Orders List
-          Expanded(
-            child: FutureBuilder<List<OrderModel>>(
-              future: _ordersFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: OrderHistorySheet.brandColor));
-                }
+              // Orders List
+              Expanded(
+                child: FutureBuilder<List<OrderModel>>(
+                  future: _ordersFuture,
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(color: OrderHistorySheet.brandColor));
+                    }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                          const SizedBox(height: 12),
-                          Text('Failed to load orders: ${snapshot.error}', textAlign: TextAlign.center),
-                          const SizedBox(height: 12),
-                          ElevatedButton(
-                            onPressed: _loadOrders,
-                            style: ElevatedButton.styleFrom(backgroundColor: OrderHistorySheet.brandColor),
-                            child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                    if (snapshot.hasError) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                              const SizedBox(height: 12),
+                              Text('Failed to load orders: ${snapshot.error}', textAlign: TextAlign.center),
+                              const SizedBox(height: 12),
+                              ElevatedButton(
+                                onPressed: _loadOrders,
+                                style: ElevatedButton.styleFrom(backgroundColor: OrderHistorySheet.brandColor),
+                                child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                              ),
+                            ],
                           ),
-                        ],
+                        ),
+                      );
+                    }
+
+                    final orders = snapshot.data ?? [];
+
+                    if (orders.isEmpty) {
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: const [
+                            Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
+                            SizedBox(height: 12),
+                            Text('No orders placed yet', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4B5563))),
+                            SizedBox(height: 4),
+                            Text('Add some delicious Filipino dishes to your cart!', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
+                          ],
+                        ),
+                      );
+                    }
+
+                    return RefreshIndicator(
+                      color: OrderHistorySheet.brandColor,
+                      onRefresh: () async => _loadOrders(),
+                      child: ListView.builder(
+                        padding: const EdgeInsets.all(16),
+                        itemCount: orders.length,
+                        itemBuilder: (context, index) {
+                          final order = orders[index];
+                          return _buildOrderCard(order);
+                        },
                       ),
-                    ),
-                  );
-                }
-
-                final orders = snapshot.data ?? [];
-
-                if (orders.isEmpty) {
-                  return Center(
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: const [
-                        Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
-                        SizedBox(height: 12),
-                        Text('No orders placed yet', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4B5563))),
-                        SizedBox(height: 4),
-                        Text('Add some delicious Filipino dishes to your cart!', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                      ],
-                    ),
-                  );
-                }
-
-                return RefreshIndicator(
-                  color: OrderHistorySheet.brandColor,
-                  onRefresh: () async => _loadOrders(),
-                  child: ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: orders.length,
-                    itemBuilder: (context, index) {
-                      final order = orders[index];
-                      return _buildOrderCard(order);
-                    },
-                  ),
-                );
-              },
-            ),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }

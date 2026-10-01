@@ -137,6 +137,7 @@ class MyApp extends StatelessWidget {
       ),
       home: const LandingPage(),
       routes: {
+        '/': (context) => const LandingPage(),
         '/shop': (context) => const HomeScreen(),
         '/admin': (context) => const AdminLayout(),
         '/login': (context) => const LoginPage(),
@@ -210,6 +211,9 @@ class _HomeScreenState extends State<HomeScreen> {
     'Desserts',
     'Drinks',
   ];
+
+  final ScrollController _scrollController = ScrollController();
+  final FocusNode _searchFocusNode = FocusNode();
 
   String _selectedCategory = 'All';
   String _searchQuery = '';
@@ -1019,7 +1023,12 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    _searchFocusNode.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -1039,35 +1048,41 @@ class _HomeScreenState extends State<HomeScreen> {
             // Scrollable Content
             Expanded(
               child: SingleChildScrollView(
-                child: Container(
-                  color: const Color(0xFFF9FAFB),
-                  padding: const EdgeInsets.only(bottom: 24),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 12),
-                      // Hero Banner (Photo)
-                      _buildHeroBanner(),
-                      const SizedBox(height: 12),
+                controller: _scrollController,
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1280),
+                    child: Container(
+                      color: const Color(0xFFF9FAFB),
+                      padding: const EdgeInsets.only(bottom: 24),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(height: 12),
+                          // Hero Banner (Photo)
+                          _buildHeroBanner(isDesktop),
+                          const SizedBox(height: 12),
 
-                      // Search Bar (Under Photo)
-                      _buildSearchBar(),
+                          // Search Bar (Under Photo)
+                          _buildSearchBar(),
 
-                      // Category Filters (Under Search Bar)
-                      _buildCategoryPills(),
-                      const SizedBox(height: 12),
+                          // Category Filters (Under Search Bar)
+                          _buildCategoryPills(),
+                          const SizedBox(height: 12),
 
-                      // Feature Cards (Made Fresh / Easy Ordering)
-                      _buildFeatureCards(),
-                      const SizedBox(height: 20),
+                          // Feature Cards (Made Fresh / Easy Ordering)
+                          _buildFeatureCards(),
+                          const SizedBox(height: 20),
 
-                      // Today's Picks (Horizontal scroll)
-                      _buildTodaysPicks(),
-                      const SizedBox(height: 20),
+                          // Today's Picks (Horizontal scroll)
+                          _buildTodaysPicks(),
+                          const SizedBox(height: 20),
 
-                      // Popular Right Now (Grid)
-                      _buildPopularSection(isDesktop),
-                    ],
+                          // Popular Right Now (Grid)
+                          _buildPopularSection(isDesktop),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -1084,7 +1099,11 @@ class _HomeScreenState extends State<HomeScreen> {
 
     return Container(
       color: Colors.white,
-      padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 10),
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 1280),
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 10),
       child: Row(
         children: [
           Container(
@@ -1233,6 +1252,9 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ],
       ),
+          ),
+        ),
+      ),
     );
   }
 
@@ -1253,6 +1275,7 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 8),
             Expanded(
               child: TextField(
+                focusNode: _searchFocusNode,
                 onChanged: (val) => setState(() => _searchQuery = val),
                 decoration: const InputDecoration(
                   hintText: 'Search food, restaurants...',
@@ -1307,11 +1330,11 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildHeroBanner() {
+  Widget _buildHeroBanner(bool isDesktop) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        height: 165,
+        height: isDesktop ? 260 : 165,
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
@@ -1333,7 +1356,7 @@ class _HomeScreenState extends State<HomeScreen> {
               end: Alignment.centerRight,
             ),
           ),
-          padding: const EdgeInsets.all(16),
+          padding: EdgeInsets.all(isDesktop ? 24 : 16),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisAlignment: MainAxisAlignment.end,
@@ -1350,21 +1373,21 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ),
               const SizedBox(height: 8),
-              const Text(
+              Text(
                 'Authentic Filipino Food\nDelivered to You',
                 style: TextStyle(
                   color: Colors.white,
-                  fontSize: 18,
+                  fontSize: isDesktop ? 26 : 18,
                   fontWeight: FontWeight.bold,
                   height: 1.2,
                 ),
               ),
               const SizedBox(height: 4),
-              const Text(
+              Text(
                 'From Dasmariñas kitchens to your door.',
                 style: TextStyle(
                   color: Colors.white70,
-                  fontSize: 11,
+                  fontSize: isDesktop ? 13 : 11,
                 ),
               ),
             ],
@@ -1668,15 +1691,21 @@ class _HomeScreenState extends State<HomeScreen> {
             ],
           ),
           const SizedBox(height: 8),
-          GridView.builder(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-              crossAxisCount: 2,
-              childAspectRatio: 0.70,
-              crossAxisSpacing: 12,
-              mainAxisSpacing: 12,
-            ),
+          Builder(
+            builder: (context) {
+              final screenWidth = MediaQuery.of(context).size.width;
+              final crossAxisCount = screenWidth >= 1400 ? 5 : (screenWidth >= 1050 ? 4 : (screenWidth >= 700 ? 3 : 2));
+              final childAspectRatio = screenWidth >= 700 ? 0.75 : 0.70;
+
+              return GridView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                  crossAxisCount: crossAxisCount,
+                  childAspectRatio: childAspectRatio,
+                  crossAxisSpacing: 12,
+                  mainAxisSpacing: 12,
+                ),
             itemCount: list.length,
             itemBuilder: (context, index) {
               final item = list[index];
@@ -1817,6 +1846,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               );
             },
+          );
+            },
           ),
         ],
       ),
@@ -1832,6 +1863,25 @@ class _HomeScreenState extends State<HomeScreen> {
       child: BottomNavigationBar(
         currentIndex: _currentNavIndex,
         onTap: (index) {
+          if (index == 0) {
+            setState(() {
+              _selectedCategory = 'All';
+              _searchQuery = '';
+              _currentNavIndex = 0;
+            });
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+            }
+            return;
+          }
+          if (index == 1) {
+            setState(() => _currentNavIndex = 1);
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(0, duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+            }
+            _searchFocusNode.requestFocus();
+            return;
+          }
           if (index == 2) {
             _showCartModal();
             return;
@@ -1929,7 +1979,10 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
       decoration: const BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
@@ -2080,6 +2133,8 @@ class _ItemDetailBottomSheetState extends State<_ItemDetailBottomSheet> {
           ),
         ],
       ),
+    ),
+      ),
     );
   }
 }
@@ -2103,13 +2158,16 @@ class _CartBottomSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
-      child: Column(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.85),
+          child: Column(
         children: [
           // Header
           Padding(
@@ -2223,6 +2281,8 @@ class _CartBottomSheet extends StatelessWidget {
             ),
         ],
       ),
+    ),
+      ),
     );
   }
 }
@@ -2293,14 +2353,17 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
-      ),
-      padding: const EdgeInsets.all(20),
-      constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
-      child: Column(
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 560),
+        child: Container(
+          decoration: const BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+          ),
+          padding: const EdgeInsets.all(20),
+          constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.8),
+          child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
@@ -2365,6 +2428,8 @@ class _ProfileBottomSheetState extends State<_ProfileBottomSheet> {
                   )
           )
         ],
+      ),
+    ),
       ),
     );
   }

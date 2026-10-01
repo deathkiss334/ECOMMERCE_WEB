@@ -149,17 +149,19 @@ class _LandingPageState extends State<LandingPage> {
             // Right Action Buttons
             Row(
               children: [
-                TextButton(
-                  onPressed: () => Navigator.pushNamed(context, '/login'),
-                  child: const Text(
-                    'Log In',
-                    style: TextStyle(
-                      color: darkText,
-                      fontWeight: FontWeight.bold,
+                if (!isMobile) ...[
+                  TextButton(
+                    onPressed: () => Navigator.pushNamed(context, '/login'),
+                    child: const Text(
+                      'Log In',
+                      style: TextStyle(
+                        color: darkText,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 8),
+                  const SizedBox(width: 8),
+                ],
                 ElevatedButton(
                   onPressed: () => Navigator.pushNamed(context, '/shop'),
                   style: ElevatedButton.styleFrom(
@@ -182,6 +184,54 @@ class _LandingPageState extends State<LandingPage> {
                     ),
                   ),
                 ),
+                if (isMobile) ...[
+                  const SizedBox(width: 4),
+                  PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert, color: darkText),
+                    tooltip: 'Navigation Menu',
+                    onSelected: (value) {
+                      if (value == 'browse') {
+                        Navigator.pushNamed(context, '/shop');
+                      } else if (value == 'admin') {
+                        Navigator.pushNamed(context, '/admin');
+                      } else if (value == 'login') {
+                        Navigator.pushNamed(context, '/login');
+                      }
+                    },
+                    itemBuilder: (BuildContext context) => [
+                      const PopupMenuItem(
+                        value: 'browse',
+                        child: Row(
+                          children: [
+                            Icon(Icons.restaurant_menu, size: 18, color: brandOrange),
+                            SizedBox(width: 8),
+                            Text('Browse Menu'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'admin',
+                        child: Row(
+                          children: [
+                            Icon(Icons.dashboard_outlined, size: 18, color: Color(0xFF2563EB)),
+                            SizedBox(width: 8),
+                            Text('Admin Portal'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'login',
+                        child: Row(
+                          children: [
+                            Icon(Icons.login, size: 18, color: darkText),
+                            SizedBox(width: 8),
+                            Text('Log In'),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ],
             ),
           ],
