@@ -5,12 +5,12 @@ import '../models/users_table_model.dart';
 import 'api_service.dart';
 import 'firebase_user_service.dart';
 
-/// UsersTableService manages real-time streaming, fetching, creation,
-/// updating, and deletion of records in `users_table` directly via Laravel SQLite.
+/// UsersTableService — reads and writes directly to Supabase users_table
+/// via the Laravel REST API (/api/users-table).
 class FirebaseUsersTableService {
-  /// Live real-time stream of users_table items from Laravel DB (polls every 4s)
+  /// Live real-time stream of users_table items (polls every 5s)
   static Stream<List<UsersTableModel>> streamUsers({
-    Duration interval = const Duration(seconds: 4),
+    Duration interval = const Duration(seconds: 5),
   }) async* {
     while (true) {
       try {
@@ -23,50 +23,55 @@ class FirebaseUsersTableService {
     }
   }
 
-  /// Fetch all users directly from Laravel DB + active session
+  /// Fetch all users from Supabase users_table via Laravel API
   static Future<List<UsersTableModel>> fetchUsersFromFirestore() async {
-    final Map<String, UsersTableModel> userMap = {};
-
-    // 1. Fetch from Laravel REST API
     try {
-      final laravelUrl = Uri.parse('${ApiService.baseUrl}/users-table');
-      final response = await http.get(laravelUrl);
+      final url = Uri.parse('${ApiService.baseUrl}/users-table');
+      final response = await http.get(
+        url,
+        headers: {'Accept': 'application/json'},
+      );
+
       if (response.statusCode == 200) {
         final List<dynamic> data = json.decode(response.body);
-        for (final jsonItem in data) {
-          final model = UsersTableModel.fromJson(jsonItem);
-          if (model.emailAddress.isNotEmpty) {
-            userMap[model.emailAddress.toLowerCase()] = model;
-          }
-        }
+        final models = data
+            .map((item) => UsersTableModel.fromJson(item as Map<String, dynamic>))
+            .where((u) => u.emailAddress.isNotEmpty)
+            .toList();
+        return models;
       }
     } catch (_) {}
 
-    // 2. Include current active verified user if available
+    // Fallback: include current active verified user if available
     final activeUser = FirebaseUserService.currentUser;
     if (activeUser.isVerified && activeUser.emailAddress.isNotEmpty && !activeUser.isAdmin) {
-      final model = UsersTableModel(
-        firstName: activeUser.firstName,
-        middleName: activeUser.middleName,
-        lastName: activeUser.secondName,
-        birthday: activeUser.birthday,
-        address: activeUser.address,
-        emailAddress: activeUser.emailAddress,
-        phoneNumber: activeUser.phoneNumber,
-      );
-      userMap.putIfAbsent(model.emailAddress.toLowerCase(), () => model);
+      return [
+        UsersTableModel(
+          firstName: activeUser.firstName,
+          middleName: activeUser.middleName,
+          lastName: activeUser.secondName,
+          birthday: activeUser.birthday,
+          address: activeUser.address,
+          emailAddress: activeUser.emailAddress,
+          phoneNumber: activeUser.phoneNumber,
+          role: 'customer',
+        ),
+      ];
     }
 
-    return userMap.values.toList();
+    return [];
   }
 
-  /// Add or update a user in Laravel DB
+  /// Add or update a user in Supabase users_table via Laravel API
   static Future<bool> saveUserToFirestore(UsersTableModel user) async {
     try {
-      final laravelUrl = Uri.parse('${ApiService.baseUrl}/users-table');
+      final url = Uri.parse('${ApiService.baseUrl}/users-table');
       final response = await http.post(
-        laravelUrl,
-        headers: {'Content-Type': 'application/json'},
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
         body: json.encode(user.toJson()),
       );
       return response.statusCode == 200 || response.statusCode == 201;
@@ -75,12 +80,34 @@ class FirebaseUsersTableService {
     }
   }
 
-  /// Delete a user from Laravel DB
-  static Future<bool> deleteUserFromFirestore(String emailAddress) async {
-    final docId = emailAddress.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+  /// Update a user's role (promote to admin / demote to customer)
+  static Future<bool> updateUserRole(String emailAddress, String role) async {
     try {
-      final laravelUrl = Uri.parse('${ApiService.baseUrl}/users-table/$docId');
-      final response = await http.delete(laravelUrl);
+      final encodedEmail = Uri.encodeComponent(emailAddress);
+      final url = Uri.parse('${ApiService.baseUrl}/users-table/$encodedEmail/role');
+      final response = await http.patch(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+        },
+        body: json.encode({'user_role': role}),
+      );
+      return response.statusCode == 200;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Delete a user from Supabase users_table via Laravel API
+  static Future<bool> deleteUserFromFirestore(String emailAddress) async {
+    try {
+      final encodedEmail = Uri.encodeComponent(emailAddress);
+      final url = Uri.parse('${ApiService.baseUrl}/users-table/$encodedEmail');
+      final response = await http.delete(
+        url,
+        headers: {'Accept': 'application/json'},
+      );
       return response.statusCode == 200;
     } catch (_) {
       return false;

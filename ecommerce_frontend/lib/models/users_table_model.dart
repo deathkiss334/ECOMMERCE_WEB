@@ -6,6 +6,7 @@ class UsersTableModel {
   final String address;
   final String emailAddress;
   final String phoneNumber;
+  final String role; // 'customer' or 'admin'
 
   UsersTableModel({
     required this.firstName,
@@ -15,14 +16,17 @@ class UsersTableModel {
     required this.address,
     required this.emailAddress,
     required this.phoneNumber,
+    this.role = 'customer',
   });
+
+  bool get isAdmin => role == 'admin';
 
   String get fullName {
     final parts = [firstName, middleName, lastName].where((p) => p.isNotEmpty);
     return parts.isEmpty ? 'User' : parts.join(' ');
   }
 
-  /// Create model from standard JSON map
+  /// Create model from standard JSON map (Supabase users_table response)
   factory UsersTableModel.fromJson(Map<String, dynamic> json) {
     return UsersTableModel(
       firstName: json['first_name']?.toString() ?? '',
@@ -31,11 +35,12 @@ class UsersTableModel {
       birthday: json['birthday']?.toString() ?? '',
       address: json['address']?.toString() ?? '',
       emailAddress: json['email_address']?.toString() ?? json['email']?.toString() ?? '',
-      phoneNumber: json['phone_number']?.toString() ?? '',
+      phoneNumber: json['phone_number']?.toString() ?? json['phone_num']?.toString() ?? '',
+      role: json['user_role']?.toString() ?? json['role']?.toString() ?? 'customer',
     );
   }
 
-  /// Convert model to standard JSON map
+  /// Convert model to standard JSON map for POST requests
   Map<String, dynamic> toJson() {
     return {
       'first_name': firstName,
@@ -45,10 +50,11 @@ class UsersTableModel {
       'address': address,
       'email_address': emailAddress,
       'phone_number': phoneNumber,
+      'user_role': role,
     };
   }
 
-  /// Create model from Firestore REST API document format
+  /// Create model from Firestore REST API document format (legacy support)
   factory UsersTableModel.fromFirestore(Map<String, dynamic> doc) {
     final fields = doc['fields'] ?? {};
     final namePath = doc['name']?.toString() ?? '';
@@ -62,21 +68,29 @@ class UsersTableModel {
       address: fields['address']?['stringValue'] ?? '',
       emailAddress: fields['email_address']?['stringValue'] ?? docId,
       phoneNumber: fields['phone_number']?['stringValue'] ?? '',
+      role: fields['user_role']?['stringValue'] ?? 'customer',
     );
   }
 
-  /// Convert to Firestore REST API payload fields format
-  Map<String, dynamic> toFirestoreFields() {
-    return {
-      'fields': {
-        'first_name': {'stringValue': firstName},
-        'middle_name': {'stringValue': middleName},
-        'last_name': {'stringValue': lastName},
-        'birthday': {'stringValue': birthday},
-        'address': {'stringValue': address},
-        'email_address': {'stringValue': emailAddress},
-        'phone_number': {'stringValue': phoneNumber},
-      }
-    };
+  UsersTableModel copyWith({
+    String? firstName,
+    String? middleName,
+    String? lastName,
+    String? birthday,
+    String? address,
+    String? emailAddress,
+    String? phoneNumber,
+    String? role,
+  }) {
+    return UsersTableModel(
+      firstName: firstName ?? this.firstName,
+      middleName: middleName ?? this.middleName,
+      lastName: lastName ?? this.lastName,
+      birthday: birthday ?? this.birthday,
+      address: address ?? this.address,
+      emailAddress: emailAddress ?? this.emailAddress,
+      phoneNumber: phoneNumber ?? this.phoneNumber,
+      role: role ?? this.role,
+    );
   }
 }

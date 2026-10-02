@@ -142,10 +142,119 @@ class AdminController extends Controller
     }
 
     /**
+    /**
      * POST /api/admin/orders/{id}/reject-receipt
      */
     public function rejectReceipt(Request $request, $id): JsonResponse
     {
         return $this->verifyOrder($request->merge(['action' => 'REJECT']), $id);
+    }
+
+    /**
+     * GET /api/admin/analytics
+     */
+    public function analytics(Request $request): JsonResponse
+    {
+        $range = strtolower($request->query('range', '7days'));
+
+        // Base query for valid orders
+        $validOrdersQuery = \App\Models\Order::whereNotIn('status', ['CANCELLED', 'REJECTED']);
+
+        $totalRevenue = (float) (clone $validOrdersQuery)->sum('total_amount');
+        $totalOrders = (int) (clone $validOrdersQuery)->count();
+        
+        $activeUsers = (int) \App\Models\User::where(function ($q) {
+            $q->where('role', 'customer')
+              ->orWhereNull('role');
+        })->count();
+
+        $labels = [];
+        $values = [];
+
+        $now = now();
+
+        if ($range === '7days' || $range === 'last 7 days') {
+            for ($i = 6; $i >= 0; $i--) {
+                $date = $now->copy()->subDays($i);
+                $dayLabel = $date->format('D');
+                $dayStart = $date->copy()->startOfDay();
+                $dayEnd = $date->copy()->endOfDay();
+
+                $rev = (float) \App\Models\Order::whereNotIn('status', ['CANCELLED', 'REJECTED'])
+                    ->whereBetween('created_at', [$dayStart, $dayEnd])
+                    ->sum('total_amount');
+
+                $labels[] = $dayLabel;
+                $values[] = round($rev, 2);
+            }
+        } elseif ($range === '30days' || $range === 'last 30 days') {
+            for ($i = 29; $i >= 0; $i -= 3) {
+                $date = $now->copy()->subDays($i);
+                $dayLabel = $date->format('M d');
+                $dayStart = $date->copy()->subDays(2)->startOfDay();
+                $dayEnd = $date->copy()->endOfDay();
+
+                $rev = (float) \App\Models\Order::whereNotIn('status', ['CANCELLED', 'REJECTED'])
+                    ->whereBetween('created_at', [$dayStart, $dayEnd])
+                    ->sum('total_amount');
+
+                $labels[] = $dayLabel;
+                $values[] = round($rev, 2);
+            }
+        } elseif ($range === '90days' || $range === 'last 90 days') {
+            for ($i = 11; $i >= 0; $i--) {
+                $date = $now->copy()->subWeeks($i);
+                $weekLabel = 'W' . $date->format('W');
+                $weekStart = $date->copy()->startOfWeek();
+                $weekEnd = $date->copy()->endOfWeek();
+
+                $rev = (float) \App\Models\Order::whereNotIn('status', ['CANCELLED', 'REJECTED'])
+                    ->whereBetween('created_at', [$weekStart, $weekEnd])
+                    ->sum('total_amount');
+
+                $labels[] = $weekLabel;
+                $values[] = round($rev, 2);
+            }
+        } else {
+            for ($i = 11; $i >= 0; $i--) {
+                $date = $now->copy()->subMonths($i);
+                $monthLabel = $date->format('M');
+                $monthStart = $date->copy()->startOfMonth();
+                $monthEnd = $date->copy()->endOfMonth();
+
+                $rev = (float) \App\Models\Order::whereNotIn('status', ['CANCELLED', 'REJECTED'])
+                    ->whereBetween('created_at', [$monthStart, $monthEnd])
+                    ->sum('total_amount');
+
+                $labels[] = $monthLabel;
+                $values[] = round($rev, 2);
+            }
+        }
+
+        $recentOrders = \App\Models\Order::orderBy('created_at', 'desc')
+            ->take(5)
+            ->get()
+            ->map(function ($order) {
+                return [
+                    'order_number' => $order->order_number,
+                    'customer_name' => $order->customer_name ?? 'Guest',
+                    'total_amount' => (float) $order->total_amount,
+                    'status' => $order->status,
+                    'created_at' => $order->created_at ? $order->created_at->format('M d, Y h:i A') : '',
+                ];
+            });
+
+        return response()->json([
+            'success' => true,
+            'total_revenue' => round($totalRevenue, 2),
+            'total_orders' => $totalOrders,
+            'active_users' => $activeUsers,
+            'range' => $range,
+            'trend' => [
+                'labels' => $labels,
+                'values' => $values,
+            ],
+            'recent_orders' => $recentOrders,
+        ], Response::HTTP_OK);
     }
 }

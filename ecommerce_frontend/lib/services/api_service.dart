@@ -263,4 +263,21 @@ class ApiService {
       return false;
     }
   }
+
+  /// Sales Analytics: Get total revenue, order count, active users, trend & recent activity
+  static Future<Map<String, dynamic>> getAdminAnalytics({String range = '7days'}) async {
+    try {
+      final response = await http.get(
+        Uri.parse('$baseUrl/admin/analytics?range=$range'),
+        headers: {'Accept': 'application/json'},
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body) as Map<String, dynamic>;
+      }
+      return {};
+    } catch (e) {
+      print('Failed to load analytics: $e');
+      return {};
+    }
+  }
 }
