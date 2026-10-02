@@ -55,7 +55,6 @@ class Payment extends Model
     public function setPaymentIdAttribute($value)
     {
         $this->attributes['payment_id'] = $value;
-        $this->attributes['payment_id'] = $value;
     }
 
     public function getStatusAttribute()
