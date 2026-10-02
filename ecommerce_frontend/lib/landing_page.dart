@@ -1,405 +1,498 @@
 import 'package:flutter/material.dart';
 
-class LandingPage extends StatefulWidget {
+void main() => runApp(const LandingPage());
+
+const orange = Color(0xFFF47721);
+const deepOrange = Color(0xFFE85D04);
+const ink = Color(0xFF2B211B);
+const muted = Color(0xFF786D66);
+const cream = Color(0xFFFFF7F0);
+
+class LandingPage extends StatelessWidget {
   const LandingPage({super.key});
 
   @override
-  State<LandingPage> createState() => _LandingPageState();
+  Widget build(BuildContext context) {
+    return const HomePage();
+  }
 }
 
-class _LandingPageState extends State<LandingPage> {
-  static const Color brandOrange = Color(0xFFF36F21);
-  static const Color darkText = Color(0xFF1E1E1E);
-  static const Color lightBg = Color(0xFFFFF8F0);
+class FoodItem {
+  final String name, description, price, image, category;
+  const FoodItem(
+    this.name,
+    this.description,
+    this.price,
+    this.image,
+    this.category,
+  );
+}
 
-  int? _hoveredIndex;
+const foods = [
+  FoodItem(
+    'Chicken Adobo',
+    'Classic soy-vinegar braise',
+    '₱95',
+    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=700',
+    'Ulam',
+  ),
+  FoodItem(
+    'Pork Sinigang',
+    'Sour tamarind soup, just like home',
+    '₱120',
+    'https://images.unsplash.com/photo-1547592180-85f173990554?w=700',
+    'Ulam',
+  ),
+  FoodItem(
+    'Pancit Canton',
+    'Stir-fried noodles with vegetables',
+    '₱85',
+    'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=700',
+    'Meryenda',
+  ),
+  FoodItem(
+    'Lumpiang Shanghai',
+    'Crispy golden pork spring rolls',
+    '₱70',
+    'https://images.unsplash.com/photo-1544025162-d76694265947?w=700',
+    'Silog & Sides',
+  ),
+];
+
+class HomePage extends StatefulWidget {
+  const HomePage({super.key});
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  final PageController _pageController = PageController(viewportFraction: 1.0);
+  int _activeSlide = 0;
+  int _activeCategory = 0;
+  final categories = const [
+    'All',
+    'Ulam',
+    'Silog & Sides',
+    'Meryenda',
+    'Drinks',
+  ];
+
+  final slides = const [
+    _Slide(
+      'Lutong bahay,\nsa isang click.',
+      'Your everyday favorites, freshly prepared and delivered to your door.',
+      'assets/landing1.webp',
+    ),
+    _Slide(
+      'Sarap na\nsulit sa budget.',
+      'Comfort food and sulit meals made for every kind of day.',
+      'assets/landing2.webp',
+    ),
+    _Slide(
+      'May ulam na.\nKain na tayo!',
+      'Discover today’s home-cooked specials from your neighborhood kitchen.',
+      'assets/landing3.webp',
+    ),
+    _Slide(
+      'Mainit at\nbagong luto.',
+      'Freshly prepared Filipino dishes ready for lunch and dinner.',
+      'assets/landing4.webp',
+    ),
+    _Slide(
+      'Pamilyang busog,\nsayang walang kapantay.',
+      'Bring home authentic Filipino flavors that everyone will love.',
+      'assets/landing5.webp',
+    ),
+    _Slide(
+      'Mabilis na delivery,\ndiretso sa lamesa.',
+      'Order now and enjoy hot meals delivered fast to your doorstep.',
+      'assets/landing6.webp',
+    ),
+  ];
+
+  @override
+  void dispose() {
+    _pageController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final screenSize = MediaQuery.of(context).size;
-    final isMobile = screenSize.width < 768;
-    final isTablet = screenSize.width >= 768 && screenSize.width < 1100;
+    final width = MediaQuery.sizeOf(context).width;
+    final compact = width < 700;
+    final visibleFoods = _activeCategory == 0
+        ? foods
+        : foods
+              .where((f) => f.category == categories[_activeCategory])
+              .toList();
 
     return Scaffold(
-      backgroundColor: const Color(0xFFFAFAFA),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Top Navigation Bar
-            _buildNavbar(context, isMobile),
-
-            // Main Content Area (Full Horizontal Width)
-            Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 12.0 : (isTablet ? 24.0 : 32.0),
-                vertical: 24.0,
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // 2x3 Grid of Pure Photo Collage Cards (Full Horizontal Width)
-                  _buildPhotoGrid(isMobile, isTablet),
-
-                  const SizedBox(height: 24),
-
-                  // DasmaBITES Hero Banner Section (Full Horizontal Width)
-                  _buildBottomHeroSection(context, isMobile, isTablet),
-                ],
+      body: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _header(compact)),
+            SliverToBoxAdapter(child: _hero(compact)),
+            SliverToBoxAdapter(child: _benefits(compact)),
+            SliverToBoxAdapter(
+              child: _sectionHeading(
+                'Mga paborito ng kapitbahay',
+                'Freshly cooked, always satisfying.',
+                compact,
               ),
             ),
-
-            // Web Footer
-            _buildFooter(),
+            SliverToBoxAdapter(child: _categoryBar(compact)),
+            SliverPadding(
+              padding: EdgeInsets.symmetric(
+                horizontal: compact ? 20 : 56,
+                vertical: 12,
+              ),
+              sliver: SliverLayoutBuilder(
+                builder: (context, constraints) {
+                  final width = constraints.crossAxisExtent;
+                  final cols = width > 1050
+                      ? 4
+                      : width > 700
+                      ? 3
+                      : width > 450
+                      ? 2
+                      : 1;
+                  return SliverGrid(
+                    delegate: SliverChildBuilderDelegate(
+                      (context, index) =>
+                          _foodCard(visibleFoods[index], compact),
+                      childCount: visibleFoods.length,
+                    ),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: cols,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: cols == 1 ? 1.4 : 0.82,
+                    ),
+                  );
+                },
+              ),
+            ),
+            SliverToBoxAdapter(child: _promo(compact)),
+            SliverToBoxAdapter(child: _footer(compact)),
           ],
         ),
       ),
     );
   }
 
-  /// Navigation Header Bar (Full Horizontal Width)
-  Widget _buildNavbar(BuildContext context, bool isMobile) {
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.symmetric(
-        horizontal: isMobile ? 16 : 32,
-        vertical: 16,
-      ),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget _header(bool compact) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 18),
+    child: Row(
+      children: [
+        Container(
+          width: 42,
+          height: 42,
+          decoration: BoxDecoration(
+            color: orange,
+            borderRadius: BorderRadius.circular(13),
           ),
-        ],
-      ),
-      child: SafeArea(
-        bottom: false,
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            // Logo & Brand Name
-            GestureDetector(
-              onTap: () {
-                // Already on home
+          child: const Icon(
+            Icons.restaurant_menu_rounded,
+            color: Colors.white,
+            size: 24,
+          ),
+        ),
+        const SizedBox(width: 10),
+        const Text(
+          'Vanessa\'s Carinderia',
+          style: TextStyle(
+            fontSize: 25,
+            fontWeight: FontWeight.w900,
+            color: ink,
+            letterSpacing: -1,
+          ),
+        ),
+        const Spacer(),
+        if (!compact) ...[
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/shop');
               },
-              child: Row(
-                children: [
-                  RichText(
-                    text: const TextSpan(
-                      children: [
-                        TextSpan(
-                          text: 'Dasma',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: darkText,
-                            fontFamily: 'Roboto',
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                        TextSpan(
-                          text: 'BITES',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.w900,
-                            color: brandOrange,
-                            fontFamily: 'Roboto',
-                            letterSpacing: -0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      color: brandOrange,
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.shopping_cart,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                  ),
-                ],
+              child: const Text(
+                'Home',
+                style: TextStyle(color: muted, fontWeight: FontWeight.w600),
               ),
             ),
+          ),
+          _navText('Menu'),
+          _navText('About us'),
+          const SizedBox(width: 22),
+        ],
+        OutlinedButton.icon(
+          onPressed: () => Navigator.pushNamed(context, '/login'),
+          icon: const Icon(Icons.login_rounded, size: 18),
+          label: const Text('Log in'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: ink,
+            side: const BorderSide(color: Color(0xFFEADFD6)),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+          ),
+        ),
+      ],
+    ),
+  );
 
-            // Desktop Links & Navigation
-            if (!isMobile)
-              Row(
-                children: [
-                  _navLink('Home', active: true, onTap: () {}),
-                  const SizedBox(width: 24),
-                  _navLink('Browse Menu', onTap: () {
-                    Navigator.pushNamed(context, '/shop');
-                  }),
-                ],
-              ),
+  Widget _navText(String text) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14),
+    child: TextButton(
+      onPressed: () {},
+      child: Text(
+        text,
+        style: const TextStyle(color: muted, fontWeight: FontWeight.w600),
+      ),
+    ),
+  );
 
-            // Right Action Buttons
-            Row(
-              children: [
-                if (!isMobile) ...[
-                  TextButton(
-                    onPressed: () => Navigator.pushNamed(context, '/login'),
-                    child: const Text(
-                      'Log In',
-                      style: TextStyle(
-                        color: darkText,
-                        fontWeight: FontWeight.bold,
+  Widget _hero(bool compact) => Padding(
+    padding: EdgeInsets.fromLTRB(compact ? 12 : 44, 8, compact ? 12 : 44, 10),
+    child: Column(
+      children: [
+        SizedBox(
+          height: compact ? 320 : 350,
+          child: PageView.builder(
+            controller: _pageController,
+            itemCount: slides.length,
+            onPageChanged: (i) => setState(() => _activeSlide = i),
+            itemBuilder: (context, i) {
+              final slide = slides[i];
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(28),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      Image.asset(
+                        slide.image,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, _, _) =>
+                            Container(color: const Color(0xFFFFD9B8)),
                       ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                ],
-                ElevatedButton(
-                  onPressed: () => Navigator.pushNamed(context, '/shop'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: brandOrange,
-                    foregroundColor: Colors.white,
-                    elevation: 0,
-                    padding: EdgeInsets.symmetric(
-                      horizontal: isMobile ? 16 : 24,
-                      vertical: 12,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(24),
-                    ),
-                  ),
-                  child: const Text(
-                    'Shop Now',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                ),
-                if (isMobile) ...[
-                  const SizedBox(width: 4),
-                  PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert, color: darkText),
-                    tooltip: 'Navigation Menu',
-                    onSelected: (value) {
-                      if (value == 'browse') {
-                        Navigator.pushNamed(context, '/shop');
-                      } else if (value == 'login') {
-                        Navigator.pushNamed(context, '/login');
-                      }
-                    },
-                    itemBuilder: (BuildContext context) => [
-                      const PopupMenuItem(
-                        value: 'browse',
-                        child: Row(
-                          children: [
-                            Icon(Icons.restaurant_menu, size: 18, color: brandOrange),
-                            SizedBox(width: 8),
-                            Text('Browse Menu'),
-                          ],
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.centerLeft,
+                            end: Alignment.centerRight,
+                            colors: [
+                              Colors.black.withOpacity(.72),
+                              Colors.black.withOpacity(.30),
+                              Colors.transparent,
+                            ],
+                          ),
                         ),
                       ),
-                      const PopupMenuItem(
-                        value: 'login',
-                        child: Row(
-                          children: [
-                            Icon(Icons.login, size: 18, color: darkText),
-                            SizedBox(width: 8),
-                            Text('Log In'),
-                          ],
+                      Padding(
+                        padding: EdgeInsets.fromLTRB(
+                          compact ? 20 : 56,
+                          compact ? 20 : 40,
+                          compact ? 70 : 120,
+                          compact ? 20 : 40,
                         ),
+                        child: Align(
+                          alignment: Alignment.centerLeft,
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 510),
+                            child: SingleChildScrollView(
+                              physics: const BouncingScrollPhysics(),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 6,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: orange,
+                                      borderRadius: BorderRadius.circular(30),
+                                    ),
+                                    child: const Text(
+                                      'SARAP NA LUTONG BAHAY',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                        letterSpacing: 1,
+                                      ),
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 10 : 18),
+                                  Text(
+                                    slide.title.replaceAll('\\n', '\n'),
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontSize: compact ? 28 : 52,
+                                      height: 1.08,
+                                      fontWeight: FontWeight.w900,
+                                      letterSpacing: -1.2,
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 8 : 14),
+                                  Text(
+                                    slide.subtitle,
+                                    style: TextStyle(
+                                      color: Colors.white.withOpacity(.9),
+                                      fontSize: compact ? 13 : 16,
+                                      height: 1.4,
+                                    ),
+                                  ),
+                                  SizedBox(height: compact ? 16 : 24),
+                                  FilledButton(
+                                    onPressed: () => Scrollable.ensureVisible(
+                                      context,
+                                      duration: const Duration(milliseconds: 400),
+                                    ),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: orange,
+                                      foregroundColor: Colors.white,
+                                      padding: EdgeInsets.symmetric(
+                                        horizontal: compact ? 18 : 23,
+                                        vertical: compact ? 12 : 16,
+                                      ),
+                                    ),
+                                    child: const Text(
+                                      'Order now  →',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Positioned(
+                        right: compact ? 16 : 28,
+                        bottom: compact ? 16 : 28,
+                        child: _singleNavControl(compact),
                       ),
                     ],
                   ),
-                ],
-              ],
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _navLink(String label, {bool active = false, required VoidCallback onTap}) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 15,
-            fontWeight: active ? FontWeight.bold : FontWeight.w600,
-            color: active ? brandOrange : Colors.black.withValues(alpha: 0.7),
-          ),
-        ),
-      ),
-    );
-  }
-
-  /// 2x3 Grid of Pure Photo Collage Cards (Takes full horizontal space)
-  Widget _buildPhotoGrid(bool isMobile, bool isTablet) {
-    final images = [
-      'assets/landing1.jpg',
-      'assets/landing2.jpg',
-      'assets/landing3.jpg',
-      'assets/landing4.jpg',
-      'assets/landing5.jpg',
-      'assets/landing6.jpg',
-    ];
-
-    int crossAxisCount = isMobile ? 1 : (isTablet ? 2 : 3);
-    double childAspectRatio = isMobile ? 1.4 : (isTablet ? 1.7 : 2.2);
-
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(10),
-      child: GridView.builder(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: images.length,
-        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-          crossAxisCount: crossAxisCount,
-          crossAxisSpacing: 6,
-          mainAxisSpacing: 6,
-          childAspectRatio: childAspectRatio,
-        ),
-        itemBuilder: (context, index) {
-          return _buildGridTile(images[index], index);
-        },
-      ),
-    );
-  }
-
-  Widget _buildGridTile(String imagePath, int index) {
-    final isHovered = _hoveredIndex == index;
-
-    return MouseRegion(
-      onEnter: (_) => setState(() => _hoveredIndex = index),
-      onExit: (_) => setState(() => _hoveredIndex = null),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        transform: isHovered
-            ? Matrix4.diagonal3Values(1.01, 1.01, 1.0)
-            : Matrix4.identity(),
-        transformAlignment: Alignment.center,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(6),
-          child: Image.asset(
-            imagePath,
-            fit: BoxFit.cover,
-            errorBuilder: (context, error, stackTrace) {
-              return Container(
-                color: Colors.grey.shade300,
-                child: Center(
-                  child: Icon(Icons.image, size: 48, color: Colors.grey.shade500),
                 ),
               );
             },
           ),
         ),
-      ),
-    );
-  }
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(
+            slides.length,
+            (i) => GestureDetector(
+              onTap: () => _pageController.animateToPage(
+                i,
+                duration: const Duration(milliseconds: 350),
+                curve: Curves.easeOut,
+              ),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _activeSlide == i ? 27 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _activeSlide == i ? orange : const Color(0xFFE8D6C8),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ],
+    ),
+  );
 
-  /// DasmaBITES Hero Banner Section (Takes full horizontal space)
-  Widget _buildBottomHeroSection(BuildContext context, bool isMobile, bool isTablet) {
+  Widget _singleNavControl(bool compact) {
     return Container(
-      width: double.infinity,
       decoration: BoxDecoration(
-        color: lightBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFF2E6D8), width: 1.5),
+        color: Colors.black.withOpacity(0.55),
+        borderRadius: BorderRadius.circular(30),
+        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 15,
-            offset: const Offset(0, 6),
+            color: Colors.black.withOpacity(0.25),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
+        borderRadius: BorderRadius.circular(30),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
           children: [
-            // Top-Left Corner Wave Accent
-            Positioned(
-              top: 0,
-              left: 0,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: const BoxDecoration(
-                  color: brandOrange,
-                  borderRadius: BorderRadius.only(
-                    bottomRight: Radius.circular(120),
-                  ),
-                ),
+            IconButton(
+              onPressed: () {
+                if (_pageController.hasClients) {
+                  if (_activeSlide > 0) {
+                    _pageController.previousPage(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                    );
+                  } else {
+                    _pageController.animateToPage(
+                      slides.length - 1,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                }
+              },
+              icon: const Icon(
+                Icons.chevron_left_rounded,
+                color: Colors.white,
+                size: 22,
               ),
+              tooltip: 'Previous',
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              padding: EdgeInsets.zero,
             ),
-
-            // Bottom-Right Corner Wave Accent
-            Positioned(
-              bottom: 0,
-              right: 0,
-              child: Container(
-                width: 130,
-                height: 130,
-                decoration: const BoxDecoration(
-                  color: brandOrange,
-                  borderRadius: BorderRadius.only(
-                    topLeft: Radius.circular(120),
-                  ),
-                ),
-              ),
-            ),
-
-            // Main Hero Content
             Padding(
-              padding: EdgeInsets.symmetric(
-                horizontal: isMobile ? 20 : 48,
-                vertical: isMobile ? 28 : 40,
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(
+                '${_activeSlide + 1} / ${slides.length}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.bold,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
               ),
-              child: Column(
-                children: [
-                  // Top Row (Center Logo & Right Tagline)
-                  if (isMobile)
-                    Column(
-                      children: [
-                        _buildCenterLogoAndCTA(context, isMobile),
-                        const SizedBox(height: 24),
-                        _buildRightTagline(),
-                      ],
-                    )
-                  else
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.center,
-                      children: [
-                        const Expanded(flex: 1, child: SizedBox()),
-                        Expanded(
-                          flex: 5,
-                          child: _buildCenterLogoAndCTA(context, isMobile),
-                        ),
-                        Expanded(
-                          flex: 4,
-                          child: _buildRightTagline(),
-                        ),
-                      ],
-                    ),
-
-                  const SizedBox(height: 36),
-                  const Divider(color: Color(0xFFE6DBCF), thickness: 1),
-                  const SizedBox(height: 24),
-
-                  // Bottom 4 Feature Bullet Points Bar
-                  _buildFeaturesBar(isMobile),
-                ],
+            ),
+            IconButton(
+              onPressed: () {
+                if (_pageController.hasClients) {
+                  if (_activeSlide < slides.length - 1) {
+                    _pageController.nextPage(
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                    );
+                  } else {
+                    _pageController.animateToPage(
+                      0,
+                      duration: const Duration(milliseconds: 350),
+                      curve: Curves.easeOut,
+                    );
+                  }
+                }
+              },
+              icon: const Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white,
+                size: 22,
               ),
+              tooltip: 'Next',
+              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+              padding: EdgeInsets.zero,
             ),
           ],
         ),
@@ -407,226 +500,305 @@ class _LandingPageState extends State<LandingPage> {
     );
   }
 
-  Widget _buildCenterLogoAndCTA(BuildContext context, bool isMobile) {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        // Brand Title with Cart Icon
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            RichText(
-              text: const TextSpan(
-                children: [
-                  TextSpan(
-                    text: 'Dasma',
-                    style: TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w900,
-                      color: darkText,
-                      fontFamily: 'Roboto',
-                      letterSpacing: -1,
-                    ),
-                  ),
-                  TextSpan(
-                    text: 'BITES',
-                    style: TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.w900,
-                      color: brandOrange,
-                      fontFamily: 'Roboto',
-                      letterSpacing: -1,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(width: 8),
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: brandOrange,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.shopping_cart,
-                color: Colors.white,
-                size: 28,
-              ),
-            ),
-          ],
+  Widget _benefits(bool compact) => Padding(
+    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 22),
+    child: Wrap(
+      alignment: WrapAlignment.spaceAround,
+      runSpacing: 14,
+      spacing: 16,
+      children: const [
+        _Benefit(
+          Icons.soup_kitchen_outlined,
+          'Freshly cooked',
+          'Made with care every day',
         ),
-        const SizedBox(height: 6),
-
-        // Subtitle
-        const Text(
-          'Your Favorite Bites, Just a Click Away!',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-            color: Color(0xFF4A4A4A),
-          ),
+        _Benefit(
+          Icons.delivery_dining_outlined,
+          'Quick delivery',
+          'Good food, right at your door',
         ),
-        const SizedBox(height: 20),
-
-        // Prominent CTA Button "Shop Now"
-        ElevatedButton(
-          onPressed: () => Navigator.pushNamed(context, '/shop'),
-          style: ElevatedButton.styleFrom(
-            backgroundColor: brandOrange,
-            foregroundColor: Colors.white,
-            padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-            elevation: 2,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(30),
-            ),
-          ),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.shopping_cart_outlined, size: 20, color: Colors.white),
-              SizedBox(width: 8),
-              Text(
-                'Shop Now',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 0.3,
-                  color: Colors.white,
-                ),
-              ),
-            ],
-          ),
+        _Benefit(
+          Icons.payments_outlined,
+          'Presyong sulit',
+          'Everyday meals, fair prices',
         ),
       ],
-    );
-  }
+    ),
+  );
 
-  Widget _buildRightTagline() {
-    return Column(
+  Widget _sectionHeading(String title, String subtitle, bool compact) =>
+      Padding(
+        padding: EdgeInsets.fromLTRB(
+          compact ? 20 : 56,
+          16,
+          compact ? 20 : 56,
+          8,
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: TextStyle(
+                fontSize: compact ? 20 : 26,
+                fontWeight: FontWeight.w900,
+                color: ink,
+                letterSpacing: -.5,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(subtitle, style: const TextStyle(color: muted, fontSize: 13)),
+          ],
+        ),
+      );
+
+  Widget _categoryBar(bool compact) => SizedBox(
+    height: 44,
+    child: ListView(
+      scrollDirection: Axis.horizontal,
+      padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56),
+      children: List.generate(
+        categories.length,
+        (i) => Padding(
+          padding: const EdgeInsets.only(right: 7),
+          child: ChoiceChip(
+            label: Text(categories[i]),
+            selected: _activeCategory == i,
+            onSelected: (_) => setState(() => _activeCategory = i),
+            selectedColor: orange,
+            backgroundColor: cream,
+            labelStyle: TextStyle(
+              color: _activeCategory == i ? Colors.white : ink,
+              fontWeight: FontWeight.w600,
+              fontSize: 12,
+            ),
+            side: BorderSide.none,
+            showCheckmark: false,
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  Widget _foodCard(FoodItem food, bool compact) => Container(
+    decoration: BoxDecoration(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(16),
+      border: Border.all(color: const Color(0xFFF0E7E0)),
+      boxShadow: [
+        BoxShadow(
+          color: ink.withOpacity(.04),
+          blurRadius: 12,
+          offset: const Offset(0, 4),
+        ),
+      ],
+    ),
+    clipBehavior: Clip.antiAlias,
+    child: Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text(
-              '\\',
-              style: TextStyle(
-                color: brandOrange,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(width: 6),
-            const Text(
-              'DasmaBITES',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w800,
-                color: darkText,
-              ),
-            ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        const Padding(
-          padding: EdgeInsets.only(left: 12.0),
-          child: Text(
-            '— Because Good Food\n    Brings People Together',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              height: 1.35,
-              color: Color(0xFF333333),
-              fontStyle: FontStyle.italic,
+        Expanded(
+          flex: 55,
+          child: Image.network(
+            food.image,
+            width: double.infinity,
+            fit: BoxFit.cover,
+            errorBuilder: (_, _, _) => Container(
+              color: cream,
+              child: const Icon(Icons.restaurant, color: orange, size: 32),
             ),
           ),
         ),
-      ],
-    );
-  }
-
-  Widget _buildFeaturesBar(bool isMobile) {
-    final features = [
-      {'icon': Icons.local_shipping_outlined, 'title': 'Fast Delivery'},
-      {'icon': Icons.verified_user_outlined, 'title': 'Secure Payment'},
-      {'icon': Icons.favorite_border, 'title': 'Great Deals'},
-      {'icon': Icons.sentiment_satisfied_alt, 'title': 'Happy Customers'},
-    ];
-
-    if (isMobile) {
-      return Wrap(
-        alignment: WrapAlignment.spaceAround,
-        runSpacing: 16,
-        spacing: 16,
-        children: features
-            .map((f) => Row(
+        Expanded(
+          flex: 45,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(f['icon'] as IconData, size: 20, color: darkText),
-                    const SizedBox(width: 6),
                     Text(
-                      f['title'] as String,
+                      food.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
-                        fontWeight: FontWeight.w700,
-                        fontSize: 13,
-                        color: darkText,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                        color: ink,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      food.description,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(
+                        color: muted,
+                        fontSize: 11,
+                        height: 1.2,
                       ),
                     ),
                   ],
-                ))
-            .toList(),
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-      children: features.asMap().entries.map((entry) {
-        final idx = entry.key;
-        final f = entry.value;
-
-        return Row(
-          children: [
-            Icon(f['icon'] as IconData, size: 20, color: darkText),
-            const SizedBox(width: 8),
-            Text(
-              f['title'] as String,
-              style: const TextStyle(
-                fontWeight: FontWeight.w700,
-                fontSize: 14,
-                color: darkText,
-              ),
+                ),
+                Row(
+                  children: [
+                    Text(
+                      food.price,
+                      style: const TextStyle(
+                        color: deepOrange,
+                        fontWeight: FontWeight.w900,
+                        fontSize: 16,
+                      ),
+                    ),
+                    const Spacer(),
+                    IconButton.filled(
+                      onPressed: () {},
+                      icon: const Icon(Icons.add, size: 16),
+                      style: IconButton.styleFrom(
+                        backgroundColor: orange,
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(32, 32),
+                        padding: EdgeInsets.zero,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
-            if (idx < features.length - 1) ...[
-              const SizedBox(width: 32),
-              Container(
-                height: 20,
-                width: 1,
-                color: const Color(0xFFDCD2C4),
-              ),
-            ],
-          ],
-        );
-      }).toList(),
-    );
-  }
-
-  /// Web Footer (Pinned to absolute bottom edge of full screen view)
-  Widget _buildFooter() {
-    return Container(
-      width: double.infinity,
-      color: const Color(0xFF1E1E1E),
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 32),
-      child: Center(
-        child: Text(
-          '© ${DateTime.now().year} DasmaBITES — Your Favorite Bites, Just a Click Away! All rights reserved.',
-          style: TextStyle(
-            color: Colors.white.withValues(alpha: 0.7),
-            fontSize: 13,
           ),
         ),
+      ],
+    ),
+  );
+
+  Widget _promo(bool compact) => Padding(
+    padding: EdgeInsets.fromLTRB(compact ? 20 : 56, 30, compact ? 20 : 56, 36),
+    child: Container(
+      padding: EdgeInsets.all(compact ? 20 : 32),
+      decoration: BoxDecoration(
+        color: cream,
+        borderRadius: BorderRadius.circular(20),
       ),
-    );
-  }
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'May cravings ka?',
+                  style: TextStyle(color: orange, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  'Your next comfort meal is just a few taps away.',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: compact ? 18 : 24,
+                    fontWeight: FontWeight.w900,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 14),
+                FilledButton(
+                  onPressed: () {},
+                  style: FilledButton.styleFrom(
+                    backgroundColor: orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 18,
+                      vertical: 12,
+                    ),
+                  ),
+                  child: const Text('Explore the menu', style: TextStyle(fontSize: 13)),
+                ),
+              ],
+            ),
+          ),
+          if (!compact) const SizedBox(width: 20),
+          if (!compact)
+            const Icon(
+              Icons.ramen_dining_rounded,
+              color: Color(0xFFFFC28D),
+              size: 80,
+            ),
+        ],
+      ),
+    ),
+  );
+
+  Widget _footer(bool compact) => Container(
+    color: ink,
+    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 20),
+    child: Row(
+      children: [
+        const Text(
+          'Vanessa\'s Carinderia',
+          style: TextStyle(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
+            fontSize: 18,
+          ),
+        ),
+        const Spacer(),
+        const Flexible(
+          child: Text(
+            'Lutong bahay, delivered with love.  © 2026 Vanessa\'s Carinderia',
+            textAlign: TextAlign.right,
+            style: TextStyle(color: Color(0xFFD9CEC6), fontSize: 11),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+class _Slide {
+  final String title, subtitle, image;
+  const _Slide(this.title, this.subtitle, this.image);
+}
+
+class _Benefit extends StatelessWidget {
+  final IconData icon;
+  final String title, subtitle;
+  const _Benefit(this.icon, this.title, this.subtitle);
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: 200,
+    child: Row(
+      children: [
+        Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: cream,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Icon(icon, color: orange, size: 20),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: ink, fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                subtitle,
+                style: const TextStyle(color: muted, fontSize: 11),
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
 }
