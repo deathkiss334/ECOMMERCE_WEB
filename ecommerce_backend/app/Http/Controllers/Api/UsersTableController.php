@@ -14,7 +14,50 @@ class UsersTableController extends Controller
      */
     public function index()
     {
-        return response()->json(UsersTable::all());
+        $usersFromUsersTable = UsersTable::all();
+
+        $usersFromUsers = \App\Models\User::all()->map(function ($u) {
+            $nameParts = explode(' ', trim($u->name ?? ''));
+            $firstName = $u->first_name ?: ($nameParts[0] ?? '');
+            $lastName = $u->last_name ?: (count($nameParts) > 1 ? implode(' ', array_slice($nameParts, 1)) : '');
+
+            return [
+                'first_name' => $firstName,
+                'middle_name' => '',
+                'last_name' => $lastName,
+                'birthday' => $u->birthday ?? '',
+                'address' => $u->address ?? '',
+                'email_address' => $u->email_address ?: ($u->email ?? ''),
+                'phone_number' => $u->phone_num ?: ($u->phone ?? ''),
+                'role' => $u->role ?? 'customer',
+            ];
+        });
+
+        $merged = [];
+        foreach ($usersFromUsers as $u) {
+            $email = strtolower(trim($u['email_address'] ?? ''));
+            if ($email !== '') {
+                $merged[$email] = $u;
+            }
+        }
+
+        foreach ($usersFromUsersTable as $u) {
+            $email = strtolower(trim($u->email_address ?? ''));
+            if ($email !== '') {
+                $merged[$email] = [
+                    'first_name' => $u->first_name ?? '',
+                    'middle_name' => $u->middle_name ?? '',
+                    'last_name' => $u->last_name ?? '',
+                    'birthday' => $u->birthday ?? '',
+                    'address' => $u->address ?? '',
+                    'email_address' => $u->email_address ?? '',
+                    'phone_number' => $u->phone_number ?? '',
+                    'role' => 'customer',
+                ];
+            }
+        }
+
+        return response()->json(array_values($merged));
     }
 
     /**

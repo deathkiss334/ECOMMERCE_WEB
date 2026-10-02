@@ -6,6 +6,7 @@ import '../services/api_service.dart';
 import 'order_chat_dialog.dart';
 import 'order_progress_stepper.dart';
 import 'order_review_dialog.dart';
+import 'qr_payment_modal.dart';
 
 import '../services/guest_order_storage.dart';
 
@@ -370,9 +371,18 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
         statusBgColor = const Color(0xFFD1FAE5);
         statusTextColor = const Color(0xFF047857);
         break;
+      case 'payment_rejected':
+      case 'rejected':
+        statusBgColor = const Color(0xFFFEE2E2);
+        statusTextColor = const Color(0xFFDC2626);
+        break;
       case 'cancelled':
         statusBgColor = const Color(0xFFFFE4E6);
         statusTextColor = const Color(0xFFBE123C);
+        break;
+      case 'payment_pending':
+        statusBgColor = const Color(0xFFFEF3C7);
+        statusTextColor = const Color(0xFFB45309);
         break;
       default:
         statusBgColor = const Color(0xFFFEF3C7);
@@ -463,6 +473,63 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
                   brandColor: OrderHistorySheet.brandColor,
                 ),
                 const SizedBox(height: 12),
+
+                // Re-upload proof button if payment is rejected or payment pending
+                if (order.status.toUpperCase() == 'PAYMENT_REJECTED' ||
+                    order.status.toUpperCase() == 'REJECTED' ||
+                    order.status.toUpperCase() == 'PAYMENT_PENDING') ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (order.rejectionReason != null && order.rejectionReason!.trim().isNotEmpty) ...[
+                          Text(
+                            'Reason: ${order.rejectionReason}',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF991B1B)),
+                          ),
+                          const SizedBox(height: 8),
+                        ],
+                        SizedBox(
+                          width: double.infinity,
+                          child: ElevatedButton.icon(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                barrierDismissible: false,
+                                builder: (_) => QrPaymentModal(
+                                  orderNumber: order.orderNumber,
+                                  totalAmount: order.totalAmount,
+                                  qrImageUrl: 'assets/images/gcash_qr.png',
+                                  orderType: order.orderType,
+                                  deliveryFee: order.deliveryFee,
+                                  onPaymentComplete: () {
+                                    _loadOrders();
+                                  },
+                                ),
+                              );
+                            },
+                            icon: const Icon(Icons.upload_file, size: 16),
+                            label: const Text('Re-upload GCash Receipt Proof', style: TextStyle(fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF005CE6),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
                 const Divider(height: 1, color: Color(0xFFF3F4F6)),
                 const SizedBox(height: 10),
 

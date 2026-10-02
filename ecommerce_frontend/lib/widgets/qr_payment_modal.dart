@@ -45,6 +45,7 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
 
   Uint8List? _receiptBytes;
   String? _receiptFileName;
+  String? _existingReceiptUrl;
 
   @override
   void initState() {
@@ -67,6 +68,10 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
         final paymentStatus = (data['payment_status'] ?? '').toString().toLowerCase();
         final orderStatus = (data['status'] ?? '').toString().toLowerCase();
         final notes = (data['admin_notes'] ?? data['adminNotes'] ?? '').toString();
+        final receiptUrl = data['receipt_image_url'] ?? data['receiptImageUrl'];
+        if (receiptUrl != null && receiptUrl.toString().isNotEmpty) {
+          _existingReceiptUrl = receiptUrl.toString();
+        }
 
         if (paymentStatus == 'paid' || orderStatus == 'paid' || orderStatus == 'preparing') {
           _onPaymentSucceeded();
@@ -78,11 +83,19 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
               _statusText = 'Verifying Payment with Store...';
             });
           }
-        } else if (orderStatus == 'rejected' || paymentStatus == 'rejected') {
+        } else if (orderStatus == 'rejected' ||
+            orderStatus == 'payment_rejected' ||
+            paymentStatus == 'rejected' ||
+            paymentStatus == 'failed') {
           if (mounted) {
+            final reason = notes.isNotEmpty
+                ? notes
+                : (data['rejection_reason'] ?? '').toString();
             setState(() {
               _isAwaitingVerification = false;
-              _rejectionReason = notes.isNotEmpty ? notes : 'Receipt screenshot was rejected by the admin.';
+              _rejectionReason = reason.isNotEmpty
+                  ? reason
+                  : 'Receipt screenshot was rejected by the admin.';
               _statusText = 'Payment verification rejected. Please re-upload valid proof.';
             });
           }
@@ -660,9 +673,21 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
                           borderRadius: BorderRadius.circular(8),
                           child: Image.memory(
                             _receiptBytes!,
-                            width: 100,
-                            height: 100,
+                            width: 120,
+                            height: 120,
                             fit: BoxFit.cover,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                      ] else if (_existingReceiptUrl != null && _existingReceiptUrl!.isNotEmpty) ...[
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(8),
+                          child: Image.network(
+                            _existingReceiptUrl!,
+                            width: 120,
+                            height: 120,
+                            fit: BoxFit.cover,
+                            errorBuilder: (context, error, stackTrace) => const Icon(Icons.receipt_long, size: 48, color: Color(0xFF005CE6)),
                           ),
                         ),
                         const SizedBox(height: 6),

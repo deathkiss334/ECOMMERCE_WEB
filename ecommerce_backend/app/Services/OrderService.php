@@ -241,7 +241,11 @@ class OrderService
         $order->save();
 
         if ($order->latestPayment) {
-            $order->latestPayment->status = $order->payment_status === 'paid' ? 'paid' : ($order->payment_status === 'awaiting_verification' ? 'pending_verification' : 'pending');
+            $order->latestPayment->status = $order->payment_status === 'paid' 
+                ? 'paid' 
+                : ($order->payment_status === 'awaiting_verification' 
+                    ? 'pending_verification' 
+                    : ($order->payment_status === 'rejected' ? 'failed' : 'pending'));
             if (isset($extra['gcash_ref_number'])) {
                 $order->latestPayment->gateway_reference_id = $extra['gcash_ref_number'];
             }
@@ -358,7 +362,9 @@ class OrderService
             'customer_name' => $order->customer_name ?? '',
             'customer_email' => $order->customer_email ?? '',
             'gcash_ref_number' => $order->gcash_ref_number ?? null,
-            'receipt_image_url' => $order->receipt_image_url ?? null,
+            'receipt_image_url' => $order->receipt_image_url 
+                ? (str_starts_with($order->receipt_image_url, 'http') ? $order->receipt_image_url : url('/api/receipts/' . basename($order->receipt_image_url))) 
+                : null,
             'admin_notes' => $order->admin_notes ?? null,
             'rejection_reason' => $order->rejection_reason ?? null,
             'verified_at' => ($order->verified_at instanceof \DateTimeInterface) ? $order->verified_at->format('c') : ($order->verified_at ? (string) $order->verified_at : null),

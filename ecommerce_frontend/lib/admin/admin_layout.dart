@@ -116,34 +116,7 @@ class _AdminLayoutState extends State<AdminLayout> {
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      // Search
-                      Flexible(
-                        child: Container(
-                          constraints: const BoxConstraints(maxWidth: 300),
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFF1F5F9),
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: const Row(
-                            children: [
-                              Icon(Icons.search, color: Colors.grey, size: 20),
-                              SizedBox(width: 8),
-                              Expanded(
-                                child: TextField(
-                                  decoration: InputDecoration(
-                                    hintText: 'Search admin portal...',
-                                    border: InputBorder.none,
-                                    isDense: true,
-                                    contentPadding: EdgeInsets.zero,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
+                      const Spacer(),
                       // Profile & Notifications
                       Row(
                         children: [

@@ -1,5 +1,7 @@
 import 'dart:async';
+import 'dart:typed_data';
 import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
 import 'package:url_launcher/url_launcher.dart';
 import '../models/order_model.dart';
 import '../services/api_service.dart';
@@ -235,9 +237,36 @@ class _OrdersViewState extends State<OrdersView> {
   }
 
   void _showReceiptDialog(BuildContext context, String receiptUrl, String orderNumber) {
-    final String fullUrl = receiptUrl.startsWith('http')
-        ? receiptUrl
-        : '${ApiService.baseUrl.replaceAll('/api', '')}$receiptUrl';
+    String cleanUrl = receiptUrl.trim();
+    if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+      final base = ApiService.baseUrl.replaceAll('/api', '');
+      cleanUrl = '$base${cleanUrl.startsWith('/') ? '' : '/'}$cleanUrl';
+    }
+
+    final filename = cleanUrl.split('/').last.split('?').first;
+    final directApiUrl = '${ApiService.baseUrl}/receipts/$filename';
+
+    Future<Uint8List> loadReceiptBytes() async {
+      // 1. Try CORS-enabled direct API route
+      try {
+        final res = await http.get(Uri.parse(directApiUrl));
+        if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
+          return res.bodyBytes;
+        }
+      } catch (_) {}
+
+      // 2. Try cleanUrl
+      if (cleanUrl != directApiUrl) {
+        try {
+          final res2 = await http.get(Uri.parse(cleanUrl));
+          if (res2.statusCode == 200 && res2.bodyBytes.isNotEmpty) {
+            return res2.bodyBytes;
+          }
+        } catch (_) {}
+      }
+
+      throw Exception('Could not fetch receipt image data.');
+    }
 
     showDialog(
       context: context,
@@ -266,7 +295,7 @@ class _OrdersViewState extends State<OrdersView> {
                     children: [
                       IconButton(
                         tooltip: 'Open raw link in new tab',
-                        onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                        onPressed: () => launchUrl(Uri.parse(cleanUrl), mode: LaunchMode.externalApplication),
                         icon: const Icon(Icons.open_in_new, color: Color(0xFF005CE6), size: 20),
                       ),
                       IconButton(
@@ -282,68 +311,104 @@ class _OrdersViewState extends State<OrdersView> {
                 constraints: const BoxConstraints(maxHeight: 500),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Tooltip(
-                      message: 'Click image to open in new tab',
-                      child: InkWell(
-                        onTap: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
-                        child: InteractiveViewer(
-                        panEnabled: true,
-                        minScale: 0.8,
-                        maxScale: 4.0,
-                        child: Image.network(
-                          fullUrl,
-                          fit: BoxFit.contain,
-                          loadingBuilder: (c, child, progress) {
-                            if (progress == null) return child;
-                            return const Center(
-                              child: Padding(
-                                padding: EdgeInsets.all(40.0),
-                                child: CircularProgressIndicator(),
-                              ),
-                            );
-                          },
-                          errorBuilder: (c, err, stack) => Container(
-                            width: double.infinity,
-                            padding: const EdgeInsets.all(28),
-                            color: const Color(0xFFF8FAFC),
+                  child: FutureBuilder<Uint8List>(
+                    future: loadReceiptBytes(),
+                    builder: (c, snapshot) {
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return Container(
+                          height: 280,
+                          width: double.infinity,
+                          color: const Color(0xFFF8FAFC),
+                          child: const Center(
                             child: Column(
                               mainAxisSize: MainAxisSize.min,
                               children: [
-                                const Icon(Icons.image_not_supported_outlined, size: 48, color: Color(0xFF94A3B8)),
-                                const SizedBox(height: 12),
-                                const Text(
-                                  'Image preview unavailable',
-                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
-                                ),
-                                const SizedBox(height: 6),
-                                Text(
-                                  fullUrl,
-                                  textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
-                                ),
-                                const SizedBox(height: 14),
-                                ElevatedButton.icon(
-                                  onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
-                                  icon: const Icon(Icons.open_in_new, size: 14),
-                                  label: const Text('Open raw link in new tab'),
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(0xFF005CE6),
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                  ),
-                                ),
+                                CircularProgressIndicator(color: Color(0xFF005CE6)),
+                                SizedBox(height: 12),
+                                Text('Loading GCash receipt preview...', style: TextStyle(fontSize: 12, color: Color(0xFF64748B))),
                               ],
                             ),
                           ),
+                        );
+                      }
+
+                      if (snapshot.hasData && snapshot.data!.isNotEmpty) {
+                        return Material(
+                          color: Colors.transparent,
+                          child: Tooltip(
+                            message: 'Click image to open in new tab',
+                            child: InkWell(
+                              onTap: () => launchUrl(Uri.parse(cleanUrl), mode: LaunchMode.externalApplication),
+                              child: InteractiveViewer(
+                                panEnabled: true,
+                                minScale: 0.8,
+                                maxScale: 4.0,
+                                child: Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.contain,
+                                ),
+                              ),
+                            ),
+                          ),
+                        );
+                      }
+
+                      // Fallback with Image.network
+                      return Material(
+                        color: Colors.transparent,
+                        child: Tooltip(
+                          message: 'Click image to open in new tab',
+                          child: InkWell(
+                            onTap: () => launchUrl(Uri.parse(cleanUrl), mode: LaunchMode.externalApplication),
+                            child: InteractiveViewer(
+                              panEnabled: true,
+                              minScale: 0.8,
+                              maxScale: 4.0,
+                              child: Image.network(
+                                cleanUrl,
+                                fit: BoxFit.contain,
+                                errorBuilder: (c, err, stack) => Container(
+                                  width: double.infinity,
+                                  padding: const EdgeInsets.all(28),
+                                  color: const Color(0xFFF8FAFC),
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.image_not_supported_outlined, size: 48, color: Color(0xFF94A3B8)),
+                                      const SizedBox(height: 12),
+                                      const Text(
+                                        'Receipt preview unavailable in canvas',
+                                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                      ),
+                                      const SizedBox(height: 6),
+                                      Text(
+                                        cleanUrl,
+                                        textAlign: TextAlign.center,
+                                        style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                      ),
+                                      const SizedBox(height: 14),
+                                      ElevatedButton.icon(
+                                        onPressed: () => launchUrl(Uri.parse(cleanUrl), mode: LaunchMode.externalApplication),
+                                        icon: const Icon(Icons.open_in_new, size: 14),
+                                        label: const Text('Open receipt in new tab'),
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: const Color(0xFF005CE6),
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
                         ),
-                      ),
-                    ),
+                      );
+                    },
                   ),
                 ),
-              ),
               ),
               const SizedBox(height: 12),
               Row(
@@ -351,7 +416,7 @@ class _OrdersViewState extends State<OrdersView> {
                 children: [
                   const Text('Tip: Pinch/scroll to zoom • Tap to open full size', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
                   TextButton.icon(
-                    onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                    onPressed: () => launchUrl(Uri.parse(cleanUrl), mode: LaunchMode.externalApplication),
                     icon: const Icon(Icons.open_in_browser, size: 14),
                     label: const Text('View Raw Image', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
                   ),
@@ -423,7 +488,7 @@ class _OrdersViewState extends State<OrdersView> {
       );
 
       if (mounted) {
-        final newStatus = action == 'APPROVE' ? 'PREPARING' : 'REJECTED';
+        final newStatus = action == 'APPROVE' ? 'PREPARING' : 'PAYMENT_REJECTED';
         final newPaymentStatus = action == 'APPROVE' ? 'paid' : 'rejected';
         setState(() {
           final idx = _currentOrders.indexWhere((o) => o.id == order.id || o.orderNumber == order.orderNumber);
@@ -432,6 +497,7 @@ class _OrdersViewState extends State<OrdersView> {
               status: newStatus,
               paymentStatus: newPaymentStatus,
               adminNotes: rejectionReason,
+              rejectionReason: rejectionReason,
               isRead: true,
             );
           }
@@ -470,16 +536,22 @@ class _OrdersViewState extends State<OrdersView> {
       final isRead = order.isRead || _readOrderNumbers.contains(order.orderNumber);
 
       switch (_selectedFilter) {
+        case 'incoming':
         case 'pending':
-          return order.status.toLowerCase() == 'pending';
+          final s = order.status.toLowerCase();
+          final ps = order.paymentStatus.toLowerCase();
+          return s == 'pending' || s == 'payment_pending' || s == 'awaiting_verification' || ps == 'awaiting_verification';
         case 'awaiting_verification':
           return order.status.toUpperCase() == 'AWAITING_VERIFICATION' || order.paymentStatus.toLowerCase() == 'awaiting_verification';
+        case 'payment_rejected':
+        case 'rejected':
+          return order.status.toUpperCase() == 'PAYMENT_REJECTED' || order.status.toUpperCase() == 'REJECTED' || order.paymentStatus.toLowerCase() == 'rejected';
         case 'preparing':
           return order.status.toLowerCase() == 'preparing';
         case 'dispatched':
-          return order.status.toLowerCase() == 'dispatched';
+          return order.status.toLowerCase() == 'dispatched' || order.status.toUpperCase() == 'OUT_FOR_DELIVERY';
         case 'delivered':
-          return order.status.toLowerCase() == 'delivered';
+          return order.status.toLowerCase() == 'delivered' || order.status.toUpperCase() == 'COMPLETED';
         case 'overdue':
           return order.isOverdue;
         case 'unread':
@@ -493,7 +565,10 @@ class _OrdersViewState extends State<OrdersView> {
 
   @override
   Widget build(BuildContext context) {
-    final pendingCount = _currentOrders.where((o) => o.status.toLowerCase() == 'pending').length;
+    final rejectedCount = _currentOrders.where((o) =>
+        o.status.toUpperCase() == 'PAYMENT_REJECTED' ||
+        o.status.toUpperCase() == 'REJECTED' ||
+        o.paymentStatus.toLowerCase() == 'rejected').length;
     final awaitingCount = _currentOrders.where((o) => o.status.toUpperCase() == 'AWAITING_VERIFICATION' || o.paymentStatus.toLowerCase() == 'awaiting_verification').length;
     final overdueCount = _currentOrders.where((o) => o.isOverdue).length;
     final preparingCount = _currentOrders.where((o) => o.status.toLowerCase() == 'preparing').length;
@@ -620,13 +695,13 @@ class _OrdersViewState extends State<OrdersView> {
                   SizedBox(
                     width: cardWidth,
                     child: _buildMetricCard(
-                      'New Incoming (Pending)',
-                      pendingCount.toString(),
-                      Icons.new_releases_outlined,
-                      const Color(0xFFF59E0B),
-                      const Color(0xFFFFFBEB),
-                      filterKey: 'pending',
-                      badgeText: unreadCount > 0 ? '$unreadCount Unread' : null,
+                      'Rejected Orders',
+                      rejectedCount.toString(),
+                      Icons.cancel_outlined,
+                      const Color(0xFFDC2626),
+                      const Color(0xFFFEF2F2),
+                      filterKey: 'rejected',
+                      isUrgent: rejectedCount > 0,
                     ),
                   ),
                   SizedBox(
@@ -635,8 +710,8 @@ class _OrdersViewState extends State<OrdersView> {
                       'Overdue (> 5 Mins)',
                       overdueCount.toString(),
                       Icons.timer_off_outlined,
-                      const Color(0xFFEF4444),
-                      const Color(0xFFFEF2F2),
+                      const Color(0xFFEAB308),
+                      const Color(0xFFFEF9C3),
                       filterKey: 'overdue',
                       isUrgent: overdueCount > 0,
                     ),
@@ -707,12 +782,13 @@ class _OrdersViewState extends State<OrdersView> {
                         child: DropdownButton<String>(
                           value: [
                             'all',
-                            'awaiting_verification',
                             'pending',
+                            'awaiting_verification',
                             'overdue',
                             'preparing',
                             'dispatched',
                             'delivered',
+                            'rejected',
                             'unread'
                           ].contains(_selectedFilter)
                               ? _selectedFilter
@@ -722,8 +798,8 @@ class _OrdersViewState extends State<OrdersView> {
                           borderRadius: BorderRadius.circular(10),
                           items: [
                             DropdownMenuItem(value: 'all', child: Text('All Orders (${_currentOrders.length})')),
+                            DropdownMenuItem(value: 'rejected', child: Text('❌ Rejected Orders ($rejectedCount)')),
                             DropdownMenuItem(value: 'awaiting_verification', child: Text('🔍 Awaiting GCash ($awaitingCount)')),
-                            DropdownMenuItem(value: 'pending', child: Text('⏳ Pending ($pendingCount)')),
                             DropdownMenuItem(value: 'overdue', child: Text('⚠️ Overdue ($overdueCount)')),
                             DropdownMenuItem(value: 'preparing', child: Text('🍳 Food Preparing ($preparingCount)')),
                             const DropdownMenuItem(value: 'dispatched', child: Text('🛵 Dispatched')),
@@ -818,7 +894,7 @@ class _OrdersViewState extends State<OrdersView> {
             border: Border.all(
               color: isSelected
                   ? accentColor
-                  : (isUrgent ? const Color(0xFFEF4444) : Colors.grey.shade200),
+                  : (isUrgent ? accentColor : Colors.grey.shade200),
               width: isSelected ? 2.5 : (isUrgent ? 2 : 1),
             ),
             boxShadow: [
@@ -1394,7 +1470,10 @@ class _OrdersViewState extends State<OrdersView> {
                         ],
 
                         // ── Sequential Linear Action Stepper Buttons (Strict progression) ──
-                        if (order.status.toLowerCase() == 'pending' || order.status.toUpperCase() == 'AWAITING_VERIFICATION') ...[
+                        if (order.status.toLowerCase() == 'pending' ||
+                            order.status.toUpperCase() == 'PAYMENT_PENDING' ||
+                            order.status.toUpperCase() == 'AWAITING_VERIFICATION' ||
+                            order.paymentStatus.toLowerCase() == 'awaiting_verification') ...[
                           OutlinedButton.icon(
                             onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'REJECT'),
                             icon: const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
@@ -1413,6 +1492,41 @@ class _OrdersViewState extends State<OrdersView> {
                               backgroundColor: const Color(0xFF059669),
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+
+                        if (order.status.toUpperCase() == 'PAYMENT_REJECTED' || order.status.toUpperCase() == 'REJECTED') ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFFEF2F2),
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: const Color(0xFFFCA5A5)),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.cancel, size: 14, color: Color(0xFFDC2626)),
+                                const SizedBox(width: 6),
+                                Text(
+                                  order.rejectionReason != null && order.rejectionReason!.isNotEmpty
+                                      ? 'Rejected: ${order.rejectionReason}'
+                                      : 'Receipt Proof Rejected',
+                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB91C1C)),
+                                ),
+                              ],
+                            ),
+                          ),
+                          ElevatedButton.icon(
+                            onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'APPROVE'),
+                            icon: const Icon(Icons.check, size: 14),
+                            label: const Text('Re-verify & Start Preparing', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF059669),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                             ),
                           ),
@@ -1556,6 +1670,7 @@ class _OrdersViewState extends State<OrdersView> {
         bg = const Color(0xFFFEF3C7);
         fg = const Color(0xFFB45309);
         break;
+      case 'payment_rejected':
       case 'rejected':
         bg = const Color(0xFFFEE2E2);
         fg = const Color(0xFFB91C1C);

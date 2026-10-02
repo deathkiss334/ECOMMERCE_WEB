@@ -66,6 +66,39 @@ Route::get('/orders/{orderId}/status', [OrderHistoryController::class, 'orderSta
 Route::post('/payments/submit-reference', [QrPaymentController::class, 'submitReference']);
 Route::post('/payments/qr-confirm', [QrPaymentController::class, 'confirm']);
 
+// Serve GCash receipt proof images with explicit cross-origin headers (allows Flutter Web preview)
+Route::get('/receipts/{filename}', function ($filename) {
+    $cleanName = basename($filename);
+    $path = public_path('uploads/receipts/' . $cleanName);
+    if (!file_exists($path)) {
+        abort(404, 'Receipt image not found');
+    }
+    $mime = mime_content_type($path) ?: 'image/jpeg';
+    return response()->file($path, [
+        'Content-Type' => $mime,
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+        'Access-Control-Allow-Headers' => '*',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('filename', '.*');
+
+Route::get('/uploads/receipts/{filename}', function ($filename) {
+    $cleanName = basename($filename);
+    $path = public_path('uploads/receipts/' . $cleanName);
+    if (!file_exists($path)) {
+        abort(404, 'Receipt image not found');
+    }
+    $mime = mime_content_type($path) ?: 'image/jpeg';
+    return response()->file($path, [
+        'Content-Type' => $mime,
+        'Access-Control-Allow-Origin' => '*',
+        'Access-Control-Allow-Methods' => 'GET, OPTIONS',
+        'Access-Control-Allow-Headers' => '*',
+        'Cache-Control' => 'public, max-age=86400',
+    ]);
+})->where('filename', '.*');
+
 // ── Customer Order History & Real-Time Tracking ───────────────────────────────
 Route::get('/orders', [OrderHistoryController::class, 'index']);
 Route::get('/orders/track/{order_number}', function (\Illuminate\Http\Request $request, $order_number) {

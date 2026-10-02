@@ -32,7 +32,11 @@ class OrderProgressStepper extends StatefulWidget {
       case 'DELIVERED':
       case 'COMPLETED':
         return 4;
+      case 'PAYMENT_REJECTED':
+      case 'REJECTED':
+        return -1;
       case 'AWAITING_VERIFICATION':
+      case 'PAYMENT_PENDING':
       case 'PENDING':
       default:
         return 0;
@@ -73,10 +77,58 @@ class _OrderProgressStepperState extends State<OrderProgressStepper>
     final isDelivered = widget.status.toUpperCase() == 'DELIVERED' ||
         widget.status.toUpperCase() == 'COMPLETED';
     final isRiderArrived = widget.status.toUpperCase() == 'RIDER_ARRIVED';
+    final isRejected = widget.status.toUpperCase() == 'PAYMENT_REJECTED' ||
+        widget.status.toUpperCase() == 'REJECTED';
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        // Rejection Notice Banner
+        if (isRejected) ...[
+          Container(
+            margin: const EdgeInsets.only(bottom: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+            decoration: BoxDecoration(
+              color: const Color(0xFFFEF2F2),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(color: const Color(0xFFF87171), width: 1.5),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: const BoxDecoration(
+                    color: Color(0xFFDC2626),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(Icons.cancel_outlined, color: Colors.white, size: 20),
+                ),
+                const SizedBox(width: 12),
+                const Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Payment Receipt Rejected by Store Admin',
+                        style: TextStyle(
+                          color: Color(0xFF991B1B),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 13,
+                        ),
+                      ),
+                      SizedBox(height: 2),
+                      Text(
+                        'Food will NOT be prepared until a valid GCash receipt proof is provided.',
+                        style: TextStyle(color: Color(0xFFB91C1C), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+
         // High-Contrast Rider Arrived Banner
         if (widget.showArrivedBanner && isRiderArrived) ...[
           Container(

@@ -91,6 +91,31 @@ class AdminController extends Controller
      */
     public function verifyOrder(Request $request, $orderId): JsonResponse
     {
+        $action = strtoupper($request->input('action', 'APPROVE'));
+
+        if ($action === 'REJECT') {
+            $reason = $request->input('notes') 
+                ?? $request->input('rejection_reason') 
+                ?? 'Receipt proof was rejected by admin.';
+
+            $order = OrderService::updateOrderStatus((string) $orderId, 'PAYMENT_REJECTED', [
+                'payment_status' => 'rejected',
+                'rejection_reason' => $reason,
+                'admin_notes' => $reason,
+            ]);
+
+            if (!$order) {
+                return response()->json(['message' => 'Order not found'], 404);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "Order #{$order['order_number']} receipt was rejected. Customer can re-upload valid proof.",
+                'order' => $order,
+            ]);
+        }
+
+        // Action is APPROVE
         $order = OrderService::updateOrderStatus((string) $orderId, 'PREPARING', [
             'payment_status' => 'paid',
             'verified_at' => now(),
@@ -114,5 +139,13 @@ class AdminController extends Controller
     public function verifyPayment(Request $request, $id): JsonResponse
     {
         return $this->verifyOrder($request, $id);
+    }
+
+    /**
+     * POST /api/admin/orders/{id}/reject-receipt
+     */
+    public function rejectReceipt(Request $request, $id): JsonResponse
+    {
+        return $this->verifyOrder($request->merge(['action' => 'REJECT']), $id);
     }
 }

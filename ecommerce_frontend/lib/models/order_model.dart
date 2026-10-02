@@ -133,7 +133,7 @@ class OrderModel {
 
   bool get isOverdue {
     final s = status.toLowerCase();
-    return (s == 'pending' || s == 'awaiting_verification') && elapsedMinutes >= 5;
+    return (s == 'pending' || s == 'payment_pending' || s == 'awaiting_verification') && elapsedMinutes >= 5;
   }
 
   String get orderTypeDisplay {
@@ -146,10 +146,13 @@ class OrderModel {
 
   String get statusDisplay {
     switch (status.toUpperCase()) {
+      case 'PAYMENT_PENDING':
+        return 'Payment Pending 💳';
       case 'AWAITING_VERIFICATION':
         return 'Awaiting Verification ⏳';
       case 'PAYMENT_REJECTED':
-        return 'Payment Rejected ❌';
+      case 'REJECTED':
+        return 'Receipt Rejected ❌';
       case 'PREPARING':
         return 'Preparing / Kitchen 🍳';
       case 'OUT_FOR_DELIVERY':
@@ -162,8 +165,9 @@ class OrderModel {
       case 'CANCELLED':
         return 'Cancelled / Closed ✖️';
       case 'PENDING':
+        return 'Pending ⏳';
       default:
-        return 'Awaiting Verification ⏳';
+        return status.isNotEmpty ? status : 'Pending ⏳';
     }
   }
 
