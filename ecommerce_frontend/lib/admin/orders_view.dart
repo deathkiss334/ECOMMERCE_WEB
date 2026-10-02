@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/order_model.dart';
 import '../services/api_service.dart';
 import '../services/firebase_order_service.dart';
+import '../widgets/order_chat_dialog.dart';
+import '../widgets/order_progress_stepper.dart';
+import '../widgets/order_review_dialog.dart';
 
 class OrdersView extends StatefulWidget {
   const OrdersView({super.key});
@@ -20,6 +24,15 @@ class _OrdersViewState extends State<OrdersView> {
   List<OrderModel> _currentOrders = [];
   bool _isLoading = true;
   String? _updatingOrderId;
+  String? _selectedOrderId;
+  final Map<String, TextEditingController> _trackingControllers = {};
+
+  TextEditingController _getTrackingController(String orderNumber, String? currentUrl) {
+    if (!_trackingControllers.containsKey(orderNumber)) {
+      _trackingControllers[orderNumber] = TextEditingController(text: currentUrl ?? '');
+    }
+    return _trackingControllers[orderNumber]!;
+  }
 
   @override
   void initState() {
@@ -54,6 +67,9 @@ class _OrdersViewState extends State<OrdersView> {
   void dispose() {
     _timer?.cancel();
     _ordersSub?.cancel();
+    for (var c in _trackingControllers.values) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -65,20 +81,38 @@ class _OrdersViewState extends State<OrdersView> {
     }
   }
 
-  Future<void> _updateStatus(OrderModel order, String newStatus) async {
+  void _openChat(OrderModel order) {
+    _markAsRead(order);
+    setState(() => _selectedOrderId = order.orderNumber);
+    showDialog(
+      context: context,
+      builder: (_) => OrderChatDialog(
+        orderNumber: order.orderNumber,
+        currentRole: 'admin',
+        currentUserName: 'Store Admin',
+        customerName: order.customerName,
+      ),
+    );
+  }
+
+  Future<void> _updateStatus(OrderModel order, String newStatus, {String? trackingUrl}) async {
     setState(() => _updatingOrderId = order.orderNumber);
     _markAsRead(order);
 
-    final success = await ApiService.updateOrderStatus(order.id, newStatus);
+    final success = await ApiService.updateOrderStatus(order.id, newStatus, trackingUrl: trackingUrl);
 
     if (mounted) {
       setState(() => _updatingOrderId = null);
       if (success) {
         // Local optimistic update while stream updates
         setState(() {
-          final idx = _currentOrders.indexWhere((o) => o.id == order.id);
+          final idx = _currentOrders.indexWhere((o) => o.id == order.id || o.orderNumber == order.orderNumber);
           if (idx != -1) {
-            _currentOrders[idx] = _currentOrders[idx].copyWith(status: newStatus, isRead: true);
+            _currentOrders[idx] = _currentOrders[idx].copyWith(
+              status: newStatus,
+              isRead: true,
+              lalamoveTrackingUrl: trackingUrl ?? _currentOrders[idx].lalamoveTrackingUrl,
+            );
           }
         });
 
@@ -102,10 +136,108 @@ class _OrdersViewState extends State<OrdersView> {
     }
   }
 
+  Future<void> _handleSaveTracking(OrderModel order, String url) async {
+    if (url.trim().isEmpty) return;
+    setState(() => _updatingOrderId = order.orderNumber);
+    final success = await ApiService.saveTrackingUrl(order.orderNumber, url.trim());
+    if (mounted) {
+      setState(() => _updatingOrderId = null);
+      if (success) {
+        setState(() {
+          final idx = _currentOrders.indexWhere((o) => o.id == order.id || o.orderNumber == order.orderNumber);
+          if (idx != -1) {
+            _currentOrders[idx] = _currentOrders[idx].copyWith(lalamoveTrackingUrl: url.trim());
+          }
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Lalamove tracking link saved! Customer can now track rider on live map.'),
+            backgroundColor: Color(0xFF10B981),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to save tracking link. Please check network connection.'),
+            backgroundColor: Colors.red,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _handleDispatch(OrderModel order) async {
+    final controller = _getTrackingController(order.orderNumber, order.lalamoveTrackingUrl);
+    final isDelivery = !order.orderTypeDisplay.contains('Dine-in') && !order.orderTypeDisplay.contains('Pick-up');
+
+    if (controller.text.trim().isEmpty && isDelivery) {
+      final linkController = TextEditingController();
+      final proceed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Text('🛵 ', style: TextStyle(fontSize: 22)),
+              Text('Dispatch Order', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Enter Lalamove Share Tracking Link so the customer can track their delivery:',
+                style: TextStyle(fontSize: 13, color: Color(0xFF475569)),
+              ),
+              const SizedBox(height: 12),
+              TextField(
+                controller: linkController,
+                decoration: InputDecoration(
+                  hintText: 'https://share.lalamove.com/?id=...',
+                  prefixIcon: const Icon(Icons.link, color: Color(0xFFF36F21)),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Dispatch Without Link', style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2563EB),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+              ),
+              child: const Text('Save & Dispatch'),
+            ),
+          ],
+        ),
+      );
+
+      if (proceed == null) return;
+
+      final entered = linkController.text.trim();
+      if (entered.isNotEmpty) {
+        controller.text = entered;
+        await _handleSaveTracking(order, entered);
+      }
+    }
+
+    await _updateStatus(order, 'OUT_FOR_DELIVERY', trackingUrl: controller.text.trim());
+  }
+
   void _showReceiptDialog(BuildContext context, String receiptUrl, String orderNumber) {
     final String fullUrl = receiptUrl.startsWith('http')
         ? receiptUrl
-        : 'http://127.0.0.1:8000$receiptUrl';
+        : '${ApiService.baseUrl.replaceAll('/api', '')}$receiptUrl';
 
     showDialog(
       context: context,
@@ -130,9 +262,18 @@ class _OrdersViewState extends State<OrdersView> {
                       ),
                     ],
                   ),
-                  IconButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    icon: const Icon(Icons.close, color: Colors.grey),
+                  Row(
+                    children: [
+                      IconButton(
+                        tooltip: 'Open raw link in new tab',
+                        onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                        icon: const Icon(Icons.open_in_new, color: Color(0xFF005CE6), size: 20),
+                      ),
+                      IconButton(
+                        onPressed: () => Navigator.pop(ctx),
+                        icon: const Icon(Icons.close, color: Colors.grey),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -141,40 +282,81 @@ class _OrdersViewState extends State<OrdersView> {
                 constraints: const BoxConstraints(maxHeight: 500),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(10),
-                  child: InteractiveViewer(
-                    panEnabled: true,
-                    minScale: 0.8,
-                    maxScale: 4.0,
-                    child: Image.network(
-                      fullUrl,
-                      fit: BoxFit.contain,
-                      loadingBuilder: (c, child, progress) {
-                        if (progress == null) return child;
-                        return const Center(
-                          child: Padding(
-                            padding: EdgeInsets.all(40.0),
-                            child: CircularProgressIndicator(),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Tooltip(
+                      message: 'Click image to open in new tab',
+                      child: InkWell(
+                        onTap: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                        child: InteractiveViewer(
+                        panEnabled: true,
+                        minScale: 0.8,
+                        maxScale: 4.0,
+                        child: Image.network(
+                          fullUrl,
+                          fit: BoxFit.contain,
+                          loadingBuilder: (c, child, progress) {
+                            if (progress == null) return child;
+                            return const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(40.0),
+                                child: CircularProgressIndicator(),
+                              ),
+                            );
+                          },
+                          errorBuilder: (c, err, stack) => Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(28),
+                            color: const Color(0xFFF8FAFC),
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.image_not_supported_outlined, size: 48, color: Color(0xFF94A3B8)),
+                                const SizedBox(height: 12),
+                                const Text(
+                                  'Image preview unavailable',
+                                  style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Color(0xFF334155)),
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  fullUrl,
+                                  textAlign: TextAlign.center,
+                                  style: const TextStyle(fontSize: 11, color: Color(0xFF64748B)),
+                                ),
+                                const SizedBox(height: 14),
+                                ElevatedButton.icon(
+                                  onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                                  icon: const Icon(Icons.open_in_new, size: 14),
+                                  label: const Text('Open raw link in new tab'),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(0xFF005CE6),
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                        );
-                      },
-                      errorBuilder: (c, err, stack) => Container(
-                        padding: const EdgeInsets.all(32),
-                        color: const Color(0xFFF8FAFC),
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            const Icon(Icons.broken_image, size: 48, color: Colors.grey),
-                            const SizedBox(height: 8),
-                            Text('Receipt image could not be loaded.\nURL: $fullUrl', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
-                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
+              ),
               const SizedBox(height: 12),
-              const Text('Tip: Pinch or scroll inside image to zoom in on transaction details', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text('Tip: Pinch/scroll to zoom • Tap to open full size', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+                  TextButton.icon(
+                    onPressed: () => launchUrl(Uri.parse(fullUrl), mode: LaunchMode.externalApplication),
+                    icon: const Icon(Icons.open_in_browser, size: 14),
+                    label: const Text('View Raw Image', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                  ),
+                ],
+              ),
             ],
           ),
         ),
@@ -241,7 +423,7 @@ class _OrdersViewState extends State<OrdersView> {
       );
 
       if (mounted) {
-        final newStatus = action == 'APPROVE' ? 'PAID' : 'REJECTED';
+        final newStatus = action == 'APPROVE' ? 'PREPARING' : 'REJECTED';
         final newPaymentStatus = action == 'APPROVE' ? 'paid' : 'rejected';
         setState(() {
           final idx = _currentOrders.indexWhere((o) => o.id == order.id || o.orderNumber == order.orderNumber);
@@ -432,6 +614,7 @@ class _OrdersViewState extends State<OrdersView> {
                       Icons.receipt_long,
                       const Color(0xFF3B82F6),
                       const Color(0xFFEFF6FF),
+                      filterKey: 'all',
                     ),
                   ),
                   SizedBox(
@@ -442,6 +625,7 @@ class _OrdersViewState extends State<OrdersView> {
                       Icons.new_releases_outlined,
                       const Color(0xFFF59E0B),
                       const Color(0xFFFFFBEB),
+                      filterKey: 'pending',
                       badgeText: unreadCount > 0 ? '$unreadCount Unread' : null,
                     ),
                   ),
@@ -453,6 +637,7 @@ class _OrdersViewState extends State<OrdersView> {
                       Icons.timer_off_outlined,
                       const Color(0xFFEF4444),
                       const Color(0xFFFEF2F2),
+                      filterKey: 'overdue',
                       isUrgent: overdueCount > 0,
                     ),
                   ),
@@ -464,6 +649,7 @@ class _OrdersViewState extends State<OrdersView> {
                       Icons.ramen_dining_outlined,
                       const Color(0xFF10B981),
                       const Color(0xFFECFDF5),
+                      filterKey: 'preparing',
                     ),
                   ),
                 ],
@@ -508,23 +694,46 @@ class _OrdersViewState extends State<OrdersView> {
                     ),
                     const SizedBox(width: 16),
 
-                    // Filter tabs
-                    SingleChildScrollView(
-                      scrollDirection: Axis.horizontal,
-                      child: Row(
-                        children: [
-                          _buildFilterChip('all', 'All (${_currentOrders.length})'),
-                          if (awaitingCount > 0)
-                            _buildFilterChip('awaiting_verification', '🔍 Awaiting GCash ($awaitingCount)', color: const Color(0xFF005CE6)),
-                          _buildFilterChip('pending', 'Pending ($pendingCount)'),
-                          if (overdueCount > 0)
-                            _buildFilterChip('overdue', '⚠️ Overdue ($overdueCount)', color: Colors.red),
-                          _buildFilterChip('preparing', 'Preparing ($preparingCount)'),
-                          _buildFilterChip('dispatched', 'Dispatched'),
-                          _buildFilterChip('delivered', 'Delivered'),
-                          if (unreadCount > 0)
-                            _buildFilterChip('unread', 'Unread ($unreadCount)', color: Colors.purple),
-                        ],
+                    // Filter Dropdown beside search bar
+                    Container(
+                      height: 44,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(color: Colors.grey.shade300),
+                      ),
+                      child: DropdownButtonHideUnderline(
+                        child: DropdownButton<String>(
+                          value: [
+                            'all',
+                            'awaiting_verification',
+                            'pending',
+                            'overdue',
+                            'preparing',
+                            'dispatched',
+                            'delivered',
+                            'unread'
+                          ].contains(_selectedFilter)
+                              ? _selectedFilter
+                              : 'all',
+                          icon: const Icon(Icons.filter_list, color: Color(0xFFF36F21), size: 20),
+                          style: const TextStyle(color: Color(0xFF1E293B), fontWeight: FontWeight.w600, fontSize: 13),
+                          borderRadius: BorderRadius.circular(10),
+                          items: [
+                            DropdownMenuItem(value: 'all', child: Text('All Orders (${_currentOrders.length})')),
+                            DropdownMenuItem(value: 'awaiting_verification', child: Text('🔍 Awaiting GCash ($awaitingCount)')),
+                            DropdownMenuItem(value: 'pending', child: Text('⏳ Pending ($pendingCount)')),
+                            DropdownMenuItem(value: 'overdue', child: Text('⚠️ Overdue ($overdueCount)')),
+                            DropdownMenuItem(value: 'preparing', child: Text('🍳 Food Preparing ($preparingCount)')),
+                            const DropdownMenuItem(value: 'dispatched', child: Text('🛵 Dispatched')),
+                            const DropdownMenuItem(value: 'delivered', child: Text('✅ Delivered')),
+                            DropdownMenuItem(value: 'unread', child: Text('✉️ Unread ($unreadCount)')),
+                          ],
+                          onChanged: (val) {
+                            if (val != null) setState(() => _selectedFilter = val);
+                          },
+                        ),
                       ),
                     ),
                   ],
@@ -584,63 +793,115 @@ class _OrdersViewState extends State<OrdersView> {
     IconData icon,
     Color accentColor,
     Color bgColor, {
+    required String filterKey,
     String? badgeText,
     bool isUrgent = false,
   }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: Colors.white,
+    final isSelected = _selectedFilter == filterKey;
+
+    return Material(
+      color: Colors.white,
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: () {
+          setState(() {
+            _selectedFilter = filterKey;
+          });
+        },
         borderRadius: BorderRadius.circular(12),
-        border: isUrgent ? Border.all(color: const Color(0xFFEF4444), width: 2) : Border.all(color: Colors.transparent),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: bgColor,
-              borderRadius: BorderRadius.circular(10),
+        hoverColor: bgColor.withValues(alpha: 0.35),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: isSelected
+                  ? accentColor
+                  : (isUrgent ? const Color(0xFFEF4444) : Colors.grey.shade200),
+              width: isSelected ? 2.5 : (isUrgent ? 2 : 1),
             ),
-            child: Icon(icon, color: accentColor, size: 28),
+            boxShadow: [
+              BoxShadow(
+                color: isSelected ? accentColor.withValues(alpha: 0.18) : Colors.black.withValues(alpha: 0.04),
+                blurRadius: isSelected ? 12 : 8,
+                offset: const Offset(0, 4),
+              )
+            ],
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: isSelected ? accentColor : bgColor,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, color: isSelected ? Colors.white : accentColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 13, fontWeight: FontWeight.w500)),
-                    if (badgeText != null) ...[
-                      const SizedBox(width: 6),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: const Color(0xFFEF4444),
-                          borderRadius: BorderRadius.circular(10),
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            title,
+                            style: TextStyle(
+                              color: isSelected ? const Color(0xFF0F172A) : Colors.grey.shade700,
+                              fontSize: 13,
+                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
                         ),
-                        child: Text(badgeText, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
-                      ),
-                    ],
+                        if (badgeText != null) ...[
+                          const SizedBox(width: 6),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEF4444),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(badgeText, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                          ),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Text(
+                          value,
+                          style: TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFF1E293B),
+                          ),
+                        ),
+                        if (isSelected)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: accentColor.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                            child: Text(
+                              'ACTIVE',
+                              style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: accentColor),
+                            ),
+                          ),
+                      ],
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.bold,
-                    color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFF1E293B),
-                  ),
-                ),
-              ],
-            ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -676,10 +937,13 @@ class _OrdersViewState extends State<OrdersView> {
     final isRead = order.isRead || _readOrderNumbers.contains(order.orderNumber);
     final isOverdue = order.isOverdue;
     final isUpdating = _updatingOrderId == order.orderNumber;
+    final isSelected = _selectedOrderId == order.orderNumber;
 
     Color cardBorderColor = Colors.grey.shade200;
     if (isOverdue) {
       cardBorderColor = const Color(0xFFEF4444);
+    } else if (isSelected) {
+      cardBorderColor = const Color(0xFFF36F21);
     } else if (!isRead) {
       cardBorderColor = const Color(0xFF3B82F6);
     }
@@ -688,11 +952,14 @@ class _OrdersViewState extends State<OrdersView> {
       elevation: 0,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),
-        side: BorderSide(color: cardBorderColor, width: isOverdue ? 2 : (isRead ? 1 : 1.5)),
+        side: BorderSide(
+          color: cardBorderColor,
+          width: (isOverdue || isSelected) ? 2 : (isRead ? 1 : 1.5),
+        ),
       ),
       color: Colors.white,
       child: InkWell(
-        onTap: () => _markAsRead(order),
+        onTap: () => _openChat(order),
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(20),
@@ -772,6 +1039,13 @@ class _OrdersViewState extends State<OrdersView> {
                 ],
               ),
               const SizedBox(height: 16),
+
+              // Horizontal Progress Stepper
+              OrderProgressStepper(
+                status: order.status,
+                brandColor: const Color(0xFFF36F21),
+              ),
+              const SizedBox(height: 16),
               const Divider(height: 1),
               const SizedBox(height: 16),
 
@@ -816,20 +1090,137 @@ class _OrdersViewState extends State<OrdersView> {
               ],
 
               // Customer Details & Notes
-              if (order.notes.isNotEmpty) ...[
-                Row(
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(12),
+                margin: const EdgeInsets.only(bottom: 16),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFFE2E8F0)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Icon(Icons.person_outline, size: 16, color: Colors.grey),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        'Customer Notes / Contact: ${order.notes}',
-                        style: TextStyle(color: Colors.grey.shade800, fontSize: 13, fontStyle: FontStyle.italic),
-                      ),
+                    Row(
+                      children: [
+                        const Icon(Icons.person, size: 16, color: Color(0xFF64748B)),
+                        const SizedBox(width: 6),
+                        Text(
+                          order.customerName != null && order.customerName!.isNotEmpty ? order.customerName! : 'Customer',
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                        ),
+                        if (order.customerEmail != null && order.customerEmail!.isNotEmpty) ...[
+                          const SizedBox(width: 8),
+                          Text('• ${order.customerEmail}', style: const TextStyle(fontSize: 12, color: Color(0xFF64748B))),
+                        ],
+                      ],
                     ),
+                    if (order.notes.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on_outlined, size: 16, color: Color(0xFF64748B)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              order.notes,
+                              style: const TextStyle(color: Color(0xFF334155), fontSize: 12),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (order.rejectionReason != null && order.rejectionReason!.isNotEmpty) ...[
+                      const SizedBox(height: 6),
+                      Row(
+                        children: [
+                          const Icon(Icons.error_outline, size: 16, color: Color(0xFFDC2626)),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Rejection Reason: ${order.rejectionReason}',
+                              style: const TextStyle(color: Color(0xFFDC2626), fontSize: 12, fontWeight: FontWeight.w600),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ],
                 ),
-                const SizedBox(height: 16),
+              ),
+
+              // Lalamove Tracking Link Integration (for Delivery Orders)
+              if (!order.orderTypeDisplay.contains('Dine-in') && !order.orderTypeDisplay.contains('Pick-up')) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: const Color(0xFFE2E8F0)),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          const Text('🛵 ', style: TextStyle(fontSize: 16)),
+                          const Text(
+                            'Lalamove Share Tracking Link',
+                            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF1E293B)),
+                          ),
+                          if (order.lalamoveTrackingUrl != null && order.lalamoveTrackingUrl!.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            InkWell(
+                              onTap: () => launchUrl(Uri.parse(order.lalamoveTrackingUrl!), mode: LaunchMode.externalApplication),
+                              child: const Text('(Open Map ↗)', style: TextStyle(color: Color(0xFF2563EB), fontSize: 11, fontWeight: FontWeight.bold)),
+                            ),
+                          ],
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: SizedBox(
+                              height: 38,
+                              child: TextField(
+                                controller: _getTrackingController(order.orderNumber, order.lalamoveTrackingUrl),
+                                style: const TextStyle(fontSize: 12),
+                                decoration: InputDecoration(
+                                  hintText: 'https://share.lalamove.com/?id=...',
+                                  prefixIcon: const Icon(Icons.link, size: 16, color: Color(0xFFF36F21)),
+                                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(6)),
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  isDense: true,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          ElevatedButton.icon(
+                            onPressed: isUpdating
+                                ? null
+                                : () {
+                                    final val = _getTrackingController(order.orderNumber, order.lalamoveTrackingUrl).text;
+                                    _handleSaveTracking(order, val);
+                                  },
+                            icon: const Icon(Icons.save, size: 14),
+                            label: const Text('Save Link', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFFF36F21),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
               ],
 
               // GCash Verification Banner for Admin
@@ -941,43 +1332,12 @@ class _OrdersViewState extends State<OrdersView> {
                           ],
                         ],
                       ),
-                      // Action buttons: Verify & Accept or Reject
-                      if (order.status.toUpperCase() == 'AWAITING_VERIFICATION') ...[
-                        const Divider(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            OutlinedButton.icon(
-                              onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'REJECT'),
-                              icon: const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
-                              label: const Text('Reject', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
-                              style: OutlinedButton.styleFrom(
-                                side: const BorderSide(color: Color(0xFFF87171)),
-                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              ),
-                            ),
-                            const SizedBox(width: 10),
-                            ElevatedButton.icon(
-                              onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'APPROVE'),
-                              icon: const Icon(Icons.check, size: 14),
-                              label: const Text('Verify & Accept', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: const Color(0xFF059669),
-                                foregroundColor: Colors.white,
-                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
                     ],
                   ),
                 ),
               ],
 
-              // Current Status Pill & Action Buttons Row
+              // Current Status Pill & Sequential Action Buttons Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -998,28 +1358,71 @@ class _OrdersViewState extends State<OrdersView> {
                   else
                     Wrap(
                       spacing: 8,
+                      runSpacing: 8,
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        // Primary "Preparing" Button as explicitly requested
-                        if (order.status.toLowerCase() == 'pending') ...[
-                          ElevatedButton.icon(
-                            onPressed: () => _updateStatus(order, 'preparing'),
-                            icon: const Icon(Icons.soup_kitchen, size: 18),
-                            label: const Text('Preparing'),
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFE8411E), // Brand Orange/Red
-                              foregroundColor: Colors.white,
-                              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                        // Live Customer-Admin Chat Button
+                        OutlinedButton.icon(
+                          onPressed: () => _openChat(order),
+                          icon: const Icon(Icons.chat_bubble_outline, size: 16, color: Color(0xFFF36F21)),
+                          label: const Text('Live Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFF36F21))),
+                          style: OutlinedButton.styleFrom(
+                            side: const BorderSide(color: Color(0xFFF36F21)),
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+
+                        // Post-Order Review Inspection (If delivered)
+                        if (order.status.toUpperCase() == 'DELIVERED') ...[
+                          OutlinedButton.icon(
+                            onPressed: () {
+                              showDialog(
+                                context: context,
+                                builder: (_) => OrderReviewDialog(orderNumber: order.orderNumber),
+                              );
+                            },
+                            icon: const Icon(Icons.star_rounded, size: 16, color: Color(0xFFFBBF24)),
+                            label: const Text('Review', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFB45309))),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFFDE68A)),
+                              backgroundColor: const Color(0xFFFFFBEB),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                              elevation: 2,
                             ),
                           ),
                         ],
 
-                        if (order.status.toLowerCase() == 'preparing') ...[
+                        // ── Sequential Linear Action Stepper Buttons (Strict progression) ──
+                        if (order.status.toLowerCase() == 'pending' || order.status.toUpperCase() == 'AWAITING_VERIFICATION') ...[
+                          OutlinedButton.icon(
+                            onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'REJECT'),
+                            icon: const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
+                            label: const Text('Reject Receipt', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                            style: OutlinedButton.styleFrom(
+                              side: const BorderSide(color: Color(0xFFF87171)),
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
                           ElevatedButton.icon(
-                            onPressed: () => _updateStatus(order, 'dispatched'),
-                            icon: const Icon(Icons.delivery_dining, size: 18),
-                            label: const Text('Out for Delivery'),
+                            onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'APPROVE'),
+                            icon: const Icon(Icons.check, size: 14),
+                            label: const Text('Approve Payment & Start Preparing', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF059669),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+
+                        if (order.status.toUpperCase() == 'PREPARING') ...[
+                          ElevatedButton.icon(
+                            onPressed: isUpdating ? null : () => _handleDispatch(order),
+                            icon: const Icon(Icons.delivery_dining, size: 16),
+                            label: const Text('Dispatch (Out for Delivery)', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF2563EB),
                               foregroundColor: Colors.white,
@@ -1029,11 +1432,25 @@ class _OrdersViewState extends State<OrdersView> {
                           ),
                         ],
 
-                        if (order.status.toLowerCase() == 'dispatched') ...[
+                        if (order.status.toUpperCase() == 'OUT_FOR_DELIVERY' || order.status.toLowerCase() == 'dispatched') ...[
                           ElevatedButton.icon(
-                            onPressed: () => _updateStatus(order, 'delivered'),
-                            icon: const Icon(Icons.check_circle_outline, size: 18),
-                            label: const Text('Mark Delivered'),
+                            onPressed: isUpdating ? null : () => _updateStatus(order, 'RIDER_ARRIVED'),
+                            icon: const Icon(Icons.pin_drop, size: 16),
+                            label: const Text('Mark Rider Arrived', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                            ),
+                          ),
+                        ],
+
+                        if (order.status.toUpperCase() == 'RIDER_ARRIVED') ...[
+                          ElevatedButton.icon(
+                            onPressed: isUpdating ? null : () => _updateStatus(order, 'DELIVERED'),
+                            icon: const Icon(Icons.check_circle_outline, size: 16),
+                            label: const Text('Confirm Delivered', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF10B981),
                               foregroundColor: Colors.white,
@@ -1043,31 +1460,27 @@ class _OrdersViewState extends State<OrdersView> {
                           ),
                         ],
 
-                        // Quick Status Switcher Dropdown menu for Admin flexibility
-                        PopupMenuButton<String>(
-                          onSelected: (newStatus) => _updateStatus(order, newStatus),
-                          itemBuilder: (context) => [
-                            const PopupMenuItem(value: 'pending', child: Text('Set Pending')),
-                            const PopupMenuItem(value: 'preparing', child: Text('Set Preparing')),
-                            const PopupMenuItem(value: 'dispatched', child: Text('Set Out for Delivery')),
-                            const PopupMenuItem(value: 'delivered', child: Text('Set Delivered')),
-                            const PopupMenuItem(value: 'cancelled', child: Text('Set Cancelled')),
-                          ],
-                          child: Container(
+                        if (order.status.toUpperCase() == 'DELIVERED' || order.status.toUpperCase() == 'COMPLETED') ...[
+                          Container(
                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFF1F5F9),
+                              color: const Color(0xFFECFDF5),
                               borderRadius: BorderRadius.circular(8),
-                              border: Border.all(color: const Color(0xFFCBD5E1)),
+                              border: Border.all(color: const Color(0xFFA7F3D0)),
                             ),
-                            child: const Row(
-                              children: [
-                                Text('Change Status', style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600)),
-                                Icon(Icons.arrow_drop_down, size: 18),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: const [
+                                Icon(Icons.check_circle, size: 16, color: Color(0xFF059669)),
+                                SizedBox(width: 6),
+                                Text(
+                                  'Order Completed',
+                                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF065F46)),
+                                ),
                               ],
                             ),
                           ),
-                        ),
+                        ],
                       ],
                     ),
                 ],

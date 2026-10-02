@@ -14,9 +14,19 @@ class User extends Authenticatable
     use HasApiTokens, HasFactory, Notifiable;
 
     protected $table = 'users';
-    protected $primaryKey = 'user_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
+        'id',
+        'name',
+        'email',
+        'password_hash',
+        'phone',
+        'role',
+        'auth_provider',
+        'google_id',
+
+        // Compatibility fields
         'user_id',
         'first_name',
         'last_name',
@@ -25,15 +35,6 @@ class User extends Authenticatable
         'phone_num',
         'email_address',
         'password',
-
-        // Compatibility fields
-        'name',
-        'email',
-        'password_hash',
-        'phone',
-        'role',
-        'auth_provider',
-        'google_id',
     ];
 
     protected $hidden = [
@@ -55,12 +56,29 @@ class User extends Authenticatable
     // Accessors & Mutators for ERD vs standard Laravel field compatibility
     public function getIdAttribute()
     {
-        return $this->attributes['user_id'] ?? $this->attributes['id'] ?? null;
+        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+    }
+
+    public function setIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+        $this->attributes['user_id'] = $value;
+    }
+
+    public function getUserIdAttribute()
+    {
+        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+    }
+
+    public function setUserIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+        $this->attributes['user_id'] = $value;
     }
 
     public function getEmailAttribute()
     {
-        return $this->attributes['email_address'] ?? $this->attributes['email'] ?? null;
+        return $this->attributes['email'] ?? $this->attributes['email_address'] ?? null;
     }
 
     public function setEmailAttribute($value)

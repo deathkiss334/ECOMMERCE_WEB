@@ -14,6 +14,8 @@ use App\Http\Controllers\Api\OrderHistoryController;
 use App\Http\Controllers\Api\WebhookController;
 use App\Http\Controllers\Api\ProductTableController;
 use App\Http\Controllers\Api\UsersTableController;
+use App\Http\Controllers\Api\OrderChatController;
+use App\Http\Controllers\Api\OrderReviewController;
 
 // ── Authentication Endpoints (Public) ─────────────────────────────────────────
 Route::prefix('auth')->group(function () {
@@ -38,16 +40,14 @@ Route::get('/user', function (Request $request) {
 
 // ── RBAC Protected Admin Endpoints (Requires auth:sanctum + role:admin) ───────
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
-    Route::get('/orders', [AdminController::class, 'orders']);
-    Route::post('/orders/{id}/status', [AdminController::class, 'updateOrderStatus']);
-    Route::post('/orders/{id}/verify-payment', [AdminController::class, 'verifyPayment']);
-    Route::patch('/orders/{orderId}/verify', [AdminController::class, 'verifyOrder']);
     Route::get('/users', [AdminController::class, 'users']);
     Route::put('/users/{id}/role', [AdminController::class, 'updateUserRole']);
 });
 
-// Admin verification without sanctum requirement (for development & test panels)
+// Admin verification and order management without sanctum requirement (for development & test panels)
+Route::get('/admin/orders', [AdminController::class, 'orders']);
 Route::patch('/admin/orders/{orderId}/verify', [AdminController::class, 'verifyOrder']);
+Route::post('/admin/orders/{id}/verify-payment', [AdminController::class, 'verifyPayment']);
 Route::get('/admin/orders-list', [AdminController::class, 'orders']);
 
 // ── E-Commerce Catalog API Endpoints ──────────────────────────────────────────
@@ -81,7 +81,6 @@ Route::post('/orders/{orderId}/upload-receipt', [QrPaymentController::class, 'up
 Route::get('/orders/{orderId}/status', [OrderHistoryController::class, 'orderStatus']);
 Route::post('/payments/submit-reference', [QrPaymentController::class, 'submitReference']);
 Route::post('/payments/qr-confirm', [QrPaymentController::class, 'confirm']);
-Route::post('/webhooks/paymongo', [WebhookController::class, 'handlePaymongo']);
 
 // ── Customer Order History & Real-Time Tracking ───────────────────────────────
 Route::get('/orders', [OrderHistoryController::class, 'index']);
@@ -92,6 +91,26 @@ Route::get('/orders/track/{order_number}', function ($order_number) {
         ->firstOrFail();
 });
 Route::post('/orders/reviews', [OrderHistoryController::class, 'storeReview']);
+
+// ── Live Order Chat Endpoints (Customer <-> Admin) ──────────────────────────
+Route::get('/orders/{orderId}/chat', [OrderChatController::class, 'index']);
+Route::get('/orders/{orderId}/chats', [OrderChatController::class, 'index']);
+Route::post('/orders/{orderId}/chat', [OrderChatController::class, 'store']);
+Route::post('/orders/{orderId}/chats', [OrderChatController::class, 'store']);
+
+// ── Lalamove Tracking Link Endpoints ────────────────────────────────────────
+Route::patch('/orders/{orderId}/tracking', [AdminController::class, 'updateTrackingUrl']);
+Route::patch('/admin/orders/{orderId}/tracking', [AdminController::class, 'updateTrackingUrl']);
+Route::post('/orders/{orderId}/tracking', [AdminController::class, 'updateTrackingUrl']);
+Route::post('/admin/orders/{orderId}/tracking', [AdminController::class, 'updateTrackingUrl']);
+
+// ── Post-Order Rating & Feedback Endpoints ──────────────────────────────────
+Route::get('/orders/{orderId}/review', [OrderReviewController::class, 'show']);
+Route::post('/orders/{orderId}/review', [OrderReviewController::class, 'store']);
+
+// ── Admin Order Management Direct Routes (Development & Mobile App) ─────────
+Route::patch('/admin/orders/{orderId}/status', [AdminController::class, 'updateOrderStatus']);
+Route::post('/admin/orders/{orderId}/status', [AdminController::class, 'updateOrderStatus']);
 
 // ── Product Table API Endpoints ───────────────────────────────────────────────
 Route::get('/product-table', [ProductTableController::class, 'index']);

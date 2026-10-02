@@ -7,6 +7,7 @@ import '../services/checkout_service.dart';
 import '../services/firebase_user_service.dart';
 import '../widgets/qr_payment_modal.dart';
 import '../widgets/order_history_sheet.dart';
+import '../services/guest_order_storage.dart';
 import 'sheets/item_detail_bottom_sheet.dart';
 import 'sheets/cart_bottom_sheet.dart';
 import 'sheets/profile_bottom_sheet.dart';
@@ -27,6 +28,15 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchProducts();
+    GuestOrderStorage.getStoredOrderNumbers().then((stored) {
+      if (mounted && stored.isNotEmpty) {
+        setState(() {
+          for (final o in stored) {
+            if (!_sessionOrderNumbers.contains(o)) _sessionOrderNumbers.add(o);
+          }
+        });
+      }
+    });
   }
 
   Future<void> _fetchProducts() async {
@@ -195,34 +205,30 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showCheckoutCustomerForm({
-    String? initialFirstName,
-    String? initialSecondName,
-    String? initialMiddleName,
-    String? initialBirthday,
-    String? initialAddress,
-    String? initialPhone,
+    String? initialFullName,
     String? initialEmail,
+    String? initialAddress,
     String? initialOrderType,
   }) {
     if (_cart.isEmpty) return;
 
     final isVerified = _currentUser.isVerified;
+    final defaultFullName = _currentUser.fullName.isNotEmpty
+        ? _currentUser.fullName
+        : '${_currentUser.firstName} ${_currentUser.secondName}'.trim();
 
-    final firstNameCtrl = TextEditingController(text: initialFirstName ?? (isVerified ? _currentUser.firstName : ''));
-    final secondNameCtrl = TextEditingController(text: initialSecondName ?? (isVerified ? _currentUser.secondName : ''));
-    final middleNameCtrl = TextEditingController(text: initialMiddleName ?? (isVerified ? _currentUser.middleName : ''));
-    final birthdayCtrl = TextEditingController(text: initialBirthday ?? (isVerified ? _currentUser.birthday : ''));
-    final addressCtrl = TextEditingController(text: initialAddress ?? (isVerified ? _currentUser.address : ''));
-    final phoneCtrl = TextEditingController(text: initialPhone ?? (isVerified ? _currentUser.phoneNumber : ''));
+    final fullNameCtrl = TextEditingController(text: initialFullName ?? (isVerified ? defaultFullName : ''));
     final emailCtrl = TextEditingController(text: initialEmail ?? (isVerified ? _currentUser.emailAddress : ''));
+    final addressCtrl = TextEditingController(text: initialAddress ?? (isVerified ? _currentUser.address : ''));
 
-    bool currentVerifiedMode = isVerified;
     String selectedOrderType = initialOrderType ?? 'delivery';
 
     showDialog(
       context: context,
       builder: (dlgCtx) => StatefulBuilder(
         builder: (dlgCtx, setDlgState) {
+          final isDelivery = selectedOrderType == 'delivery';
+
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
@@ -252,36 +258,36 @@ class _HomeScreenState extends State<HomeScreen> {
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                       decoration: BoxDecoration(
-                        color: currentVerifiedMode ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
+                        color: isVerified ? Colors.green.withValues(alpha: 0.1) : Colors.orange.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
                         border: Border.all(
-                          color: currentVerifiedMode ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3),
+                          color: isVerified ? Colors.green.withValues(alpha: 0.3) : Colors.orange.withValues(alpha: 0.3),
                         ),
                       ),
                       child: Row(
                         children: [
                           Icon(
-                            currentVerifiedMode ? Icons.verified_user : Icons.person_outline,
+                            isVerified ? Icons.verified_user : Icons.person_outline,
                             size: 18,
-                            color: currentVerifiedMode ? Colors.green[800] : Colors.orange[800],
+                            color: isVerified ? Colors.green[800] : Colors.orange[800],
                           ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              currentVerifiedMode
-                                  ? '✨ Verified User: Name, Address & Phone Auto-Filled!'
-                                  : '👤 Guest Mode: Please enter your personal details below.',
+                              isVerified
+                                  ? '✨ Verified Customer: Name, Email & Address Auto-Filled!'
+                                  : '👤 Express Checkout: Please provide your name and email.',
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w600,
-                                color: currentVerifiedMode ? Colors.green[900] : Colors.orange[900],
+                                color: isVerified ? Colors.green[900] : Colors.orange[900],
                               ),
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 16),
 
                     // Form Fields (Scrollable)
                     Expanded(
@@ -289,98 +295,151 @@ class _HomeScreenState extends State<HomeScreen> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            // Order Option Selector
-                            Container(
-                              padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFFF9FAFB),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(color: const Color(0xFFE5E7EB)),
-                              ),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Row(
-                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                    children: [
-                                      const Text(
-                                        'Order Option:',
-                                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
-                                      ),
-                                      if (selectedOrderType == 'delivery')
-                                        const Text(
-                                          '+₱10 Delivery Fee',
-                                          style: TextStyle(fontSize: 11, color: brandColor, fontWeight: FontWeight.bold),
+                            // 1. Order Option Selector: Segmented Card-Style Toggle Buttons
+                            const Text(
+                              'Order Option',
+                              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                // [ 🛵 Delivery ] Button
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => setDlgState(() => selectedOrderType = 'delivery'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 220),
+                                      curve: Curves.easeInOut,
+                                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                                      decoration: BoxDecoration(
+                                        color: isDelivery ? brandColor.withValues(alpha: 0.12) : const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: isDelivery ? brandColor : const Color(0xFFE5E7EB),
+                                          width: isDelivery ? 2 : 1,
                                         ),
-                                    ],
+                                        boxShadow: isDelivery
+                                            ? [
+                                                BoxShadow(
+                                                  color: brandColor.withValues(alpha: 0.18),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : [],
+                                      ),
+                                      child: Column(
+                                        children: [
+                                          const Text('🛵', style: TextStyle(fontSize: 22)),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Delivery',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: isDelivery ? brandColor : const Color(0xFF374151),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            '+₱10 Delivery Fee',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: isDelivery ? brandColor : const Color(0xFF9CA3AF),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ),
-                                  const SizedBox(height: 8),
-                                  Row(
-                                    children: [
-                                      Expanded(
-                                        child: ChoiceChip(
-                                          label: const Center(child: Text('🍽️ Dine In', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                                          selected: selectedOrderType == 'dine_in',
-                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'dine_in'),
-                                          selectedColor: brandColor.withValues(alpha: 0.15),
-                                          showCheckmark: false,
+                                ),
+                                const SizedBox(width: 12),
+                                // [ 🍽️ Dine-in ] Button
+                                Expanded(
+                                  child: InkWell(
+                                    onTap: () => setDlgState(() => selectedOrderType = 'dine_in'),
+                                    borderRadius: BorderRadius.circular(12),
+                                    child: AnimatedContainer(
+                                      duration: const Duration(milliseconds: 220),
+                                      curve: Curves.easeInOut,
+                                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                                      decoration: BoxDecoration(
+                                        color: !isDelivery ? brandColor.withValues(alpha: 0.12) : const Color(0xFFF9FAFB),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: !isDelivery ? brandColor : const Color(0xFFE5E7EB),
+                                          width: !isDelivery ? 2 : 1,
                                         ),
+                                        boxShadow: !isDelivery
+                                            ? [
+                                                BoxShadow(
+                                                  color: brandColor.withValues(alpha: 0.18),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ]
+                                            : [],
                                       ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: ChoiceChip(
-                                          label: const Center(child: Text('🛍️ Takeout', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600))),
-                                          selected: selectedOrderType == 'takeout',
-                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'takeout'),
-                                          selectedColor: brandColor.withValues(alpha: 0.15),
-                                          showCheckmark: false,
-                                        ),
+                                      child: Column(
+                                        children: [
+                                          const Text('🍽️', style: TextStyle(fontSize: 22)),
+                                          const SizedBox(height: 6),
+                                          Text(
+                                            'Dine-in',
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 13,
+                                              color: !isDelivery ? brandColor : const Color(0xFF374151),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            'Store Pickup / Dine-in',
+                                            style: TextStyle(
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.w600,
+                                              color: !isDelivery ? Colors.green[700] : const Color(0xFF9CA3AF),
+                                            ),
+                                          ),
+                                        ],
                                       ),
-                                      const SizedBox(width: 6),
-                                      Expanded(
-                                        child: ChoiceChip(
-                                          label: const Center(child: Text('🛵 Deliver (+₱10)', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold))),
-                                          selected: selectedOrderType == 'delivery',
-                                          onSelected: (_) => setDlgState(() => selectedOrderType = 'delivery'),
-                                          selectedColor: brandColor.withValues(alpha: 0.15),
-                                          showCheckmark: false,
-                                        ),
-                                      ),
-                                    ],
+                                    ),
                                   ),
-                                ],
-                              ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 16),
+
+                            // 2. Full Name
+                            _buildFormField(
+                              'Full Name',
+                              fullNameCtrl,
+                              Icons.person_outline,
                             ),
                             const SizedBox(height: 12),
 
-                            Row(
-                              children: [
-                                Expanded(child: _buildFormField('First Name', firstNameCtrl, Icons.person)),
-                                const SizedBox(width: 10),
-                                Expanded(child: _buildFormField('Second (Last) Name', secondNameCtrl, Icons.person_outline)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(child: _buildFormField('Middle Name', middleNameCtrl, Icons.badge)),
-                                const SizedBox(width: 10),
-                                Expanded(child: _buildFormField('Birthday (YYYY-MM-DD)', birthdayCtrl, Icons.cake)),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
+                            // 3. Email Address
                             _buildFormField(
-                              selectedOrderType == 'delivery' ? 'Delivery Address' : 'Address (Optional for Dine In / Takeout)',
-                              addressCtrl,
-                              Icons.home,
+                              'Email Address',
+                              emailCtrl,
+                              Icons.email_outlined,
                             ),
-                            const SizedBox(height: 10),
-                            Row(
-                              children: [
-                                Expanded(child: _buildFormField('Phone Number', phoneCtrl, Icons.phone)),
-                                const SizedBox(width: 10),
-                                Expanded(child: _buildFormField('Email Address', emailCtrl, Icons.email)),
-                              ],
+
+                            // 4. Delivery Address (with Delivery Notes / Landmark) - Hidden if Dine-in
+                            AnimatedCrossFade(
+                              duration: const Duration(milliseconds: 250),
+                              crossFadeState: isDelivery ? CrossFadeState.showFirst : CrossFadeState.showSecond,
+                              firstChild: Padding(
+                                padding: const EdgeInsets.only(top: 12.0),
+                                child: _buildFormField(
+                                  'Delivery Address (with Delivery Notes / Landmark)',
+                                  addressCtrl,
+                                  Icons.location_on_outlined,
+                                ),
+                              ),
+                              secondChild: const SizedBox.shrink(),
                             ),
                           ],
                         ),
@@ -397,47 +456,49 @@ class _HomeScreenState extends State<HomeScreen> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                         ),
                         onPressed: () {
-                          final isAddressReq = selectedOrderType == 'delivery';
-                          if (firstNameCtrl.text.trim().isEmpty ||
-                              phoneCtrl.text.trim().isEmpty ||
-                              (isAddressReq && addressCtrl.text.trim().isEmpty)) {
+                          final fullName = fullNameCtrl.text.trim();
+                          final email = emailCtrl.text.trim();
+                          final address = addressCtrl.text.trim();
+
+                          if (fullName.isEmpty) {
                             ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(isAddressReq
-                                    ? 'Please fill in required fields (Name, Address, Phone)'
-                                    : 'Please fill in required fields (Name, Phone)'),
+                              const SnackBar(
+                                content: Text('Please enter your Full Name'),
                                 backgroundColor: Colors.red,
                               ),
                             );
                             return;
                           }
 
-                          // Save user profile state
-                          final submittedUser = UserModel(
-                            firstName: firstNameCtrl.text.trim(),
-                            secondName: secondNameCtrl.text.trim(),
-                            middleName: middleNameCtrl.text.trim(),
-                            birthday: birthdayCtrl.text.trim(),
-                            address: addressCtrl.text.trim(),
-                            phoneNumber: phoneCtrl.text.trim(),
-                            emailAddress: emailCtrl.text.trim(),
-                            isVerified: currentVerifiedMode,
-                          );
-                          setState(() => _currentUser = submittedUser);
+                          if (email.isEmpty || !email.contains('@')) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please enter a valid Email Address'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
+
+                          if (isDelivery && address.isEmpty) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Please provide your Delivery Address and landmark'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                            return;
+                          }
 
                           Navigator.pop(dlgCtx);
 
                           // Proceed to Step 2: Dedicated Order Summary Modal
                           _showOrderSummaryModal(
-                            firstName: firstNameCtrl.text.trim(),
-                            secondName: secondNameCtrl.text.trim(),
-                            middleName: middleNameCtrl.text.trim(),
-                            birthday: birthdayCtrl.text.trim(),
-                            address: addressCtrl.text.trim(),
-                            phone: phoneCtrl.text.trim(),
-                            email: emailCtrl.text.trim(),
+                            fullName: fullName,
+                            email: email,
+                            address: isDelivery ? address : 'Dine-in (Store)',
                             orderType: selectedOrderType,
-                            isVerified: currentVerifiedMode,
+                            isVerified: isVerified,
                           );
                         },
                         child: const Row(
@@ -464,13 +525,9 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   void _showOrderSummaryModal({
-    required String firstName,
-    required String secondName,
-    required String middleName,
-    required String birthday,
-    required String address,
-    required String phone,
+    required String fullName,
     required String email,
+    required String address,
     required String orderType,
     required bool isVerified,
   }) {
@@ -482,9 +539,9 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (summaryCtx) => StatefulBuilder(
         builder: (summaryCtx, setSummaryState) {
-          final int deliveryFee = orderType == 'delivery' ? 10 : 0;
+          final isDelivery = orderType == 'delivery' || orderType == 'DELIVERY';
+          final int deliveryFee = isDelivery ? 10 : 0;
           final int checkoutTotal = cartTotal + deliveryFee;
-          final customerFullName = '$firstName $secondName'.trim();
 
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
@@ -507,13 +564,9 @@ class _HomeScreenState extends State<HomeScreen> {
                               onPressed: () {
                                 Navigator.pop(summaryCtx);
                                 _showCheckoutCustomerForm(
-                                  initialFirstName: firstName,
-                                  initialSecondName: secondName,
-                                  initialMiddleName: middleName,
-                                  initialBirthday: birthday,
-                                  initialAddress: address,
-                                  initialPhone: phone,
+                                  initialFullName: fullName,
                                   initialEmail: email,
+                                  initialAddress: address,
                                   initialOrderType: orderType,
                                 );
                               },
@@ -554,7 +607,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                     children: [
                                       Text(
-                                        customerFullName,
+                                        fullName,
                                         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Color(0xFF111827)),
                                       ),
                                       Container(
@@ -564,15 +617,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                           borderRadius: BorderRadius.circular(6),
                                         ),
                                         child: Text(
-                                          _getOrderTypeDisplay(orderType),
+                                          isDelivery ? '🛵 Delivery' : '🍽️ Dine-in',
                                           style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: brandColor),
                                         ),
                                       ),
                                     ],
                                   ),
                                   const SizedBox(height: 4),
-                                  Text('📞 Phone: $phone', style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563))),
-                                  if (orderType == 'delivery' && address.isNotEmpty) ...[
+                                  Text('📧 Email: $email', style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563))),
+                                  if (isDelivery && address.isNotEmpty) ...[
                                     const SizedBox(height: 2),
                                     Text('🏠 Address: $address', style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563))),
                                   ],
@@ -652,15 +705,15 @@ class _HomeScreenState extends State<HomeScreen> {
                                       Row(
                                         children: [
                                           const Text('Delivery Fee', style: TextStyle(fontSize: 12, color: Color(0xFF6B7280))),
-                                          if (orderType != 'delivery')
+                                          if (!isDelivery)
                                             const Text(' (Waived)', style: TextStyle(fontSize: 10, color: Colors.green, fontWeight: FontWeight.bold)),
                                         ],
                                       ),
                                       Text(
-                                        orderType == 'delivery' ? '₱10.00' : '₱0.00',
+                                        isDelivery ? '₱10.00' : '₱0.00',
                                         style: TextStyle(
                                           fontSize: 12,
-                                          color: orderType == 'delivery' ? const Color(0xFF374151) : Colors.green,
+                                          color: isDelivery ? const Color(0xFF374151) : Colors.green,
                                           fontWeight: FontWeight.w600,
                                         ),
                                       ),
@@ -731,38 +784,35 @@ class _HomeScreenState extends State<HomeScreen> {
 
                           try {
                             final submittedUser = UserModel(
-                              firstName: firstName,
-                              secondName: secondName,
-                              middleName: middleName,
-                              birthday: birthday,
+                              firstName: fullName,
+                              secondName: '',
+                              middleName: '',
+                              birthday: '',
                               address: address,
-                              phoneNumber: phone,
+                              phoneNumber: _currentUser.phoneNumber,
                               emailAddress: email,
                               isVerified: isVerified,
                             );
                             setState(() => _currentUser = submittedUser);
-                            FirebaseUserService.saveUserProfileToFirebase(submittedUser);
 
                             final result = await CheckoutService.submitOrder(
                               items: orderItems,
                               paymentMethod: selectedPaymentMethod,
                               orderType: orderType,
-                              customerName: customerFullName,
-                              customerPhone: phone,
+                              customerName: fullName,
+                              customerPhone: _currentUser.phoneNumber.isNotEmpty ? _currentUser.phoneNumber : '09123456789',
                               deliveryAddress: address,
-                              firstName: firstName,
-                              secondName: secondName,
-                              middleName: middleName,
-                              birthday: birthday,
+                              firstName: fullName,
                               emailAddress: email,
                               isVerified: isVerified,
                             );
 
-                            if (result.containsKey('order_number')) {
-                              final newOrderNum = result['order_number'].toString();
+                            if (result.containsKey('order_number') || result.containsKey('orderId')) {
+                              final newOrderNum = (result['order_number'] ?? result['orderId']).toString();
                               if (!_sessionOrderNumbers.contains(newOrderNum)) {
                                 _sessionOrderNumbers.add(newOrderNum);
                               }
+                              await GuestOrderStorage.saveOrderNumber(newOrderNum);
                             }
 
                             Navigator.pop(context); // Pop loading
@@ -819,19 +869,13 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  String _getOrderTypeDisplay(String type) {
-    switch (type.toLowerCase()) {
-      case 'dine_in':
-        return '🍽️ Dine In';
-      case 'takeout':
-        return '🛍️ Takeout';
-      case 'delivery':
-      default:
-        return '🛵 Delivery';
-    }
-  }
-
-  Widget _buildFormField(String label, TextEditingController controller, IconData icon) {
+  Widget _buildFormField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    int maxLines = 1,
+    String? hintText,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -842,8 +886,11 @@ class _HomeScreenState extends State<HomeScreen> {
         const SizedBox(height: 6),
         TextField(
           controller: controller,
+          maxLines: maxLines,
           decoration: InputDecoration(
             prefixIcon: Icon(icon, size: 18, color: const Color(0xFF9CA3AF)),
+            hintText: hintText,
+            hintStyle: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
             isDense: true,
             filled: true,
@@ -856,9 +903,9 @@ class _HomeScreenState extends State<HomeScreen> {
               borderRadius: BorderRadius.circular(10),
               borderSide: const BorderSide(color: Color(0xFFE5E7EB)),
             ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(10),
-              borderSide: const BorderSide(color: brandColor),
+            focusedBorder: const OutlineInputBorder(
+              borderRadius: BorderRadius.all(Radius.circular(10)),
+              borderSide: BorderSide(color: brandColor),
             ),
           ),
         ),
@@ -874,6 +921,8 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (ctx) => OrderHistorySheet(
         sessionOrderNumbers: _sessionOrderNumbers,
         userPhone: _currentUser.phoneNumber,
+        userEmail: _currentUser.emailAddress,
+        userName: _currentUser.firstName,
       ),
     );
   }
@@ -1012,6 +1061,20 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.home_outlined, color: Color(0xFF212121), size: 24),
             tooltip: 'Home Landing',
           ),
+          // High-visibility My Orders List & Live Tracking Button
+          ElevatedButton.icon(
+            onPressed: _showOrdersModal,
+            icon: const Icon(Icons.receipt_long, size: 16),
+            label: const Text('My Orders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: brandColor,
+              foregroundColor: Colors.white,
+              elevation: 1,
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            ),
+          ),
+          const SizedBox(width: 8),
           // Cart Button in Header for fast access
           Stack(
             clipBehavior: Clip.none,
@@ -1311,44 +1374,51 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
           const SizedBox(width: 10),
-          // Easy Ordering
+          // My Orders & Live Tracking Feature Card
           Expanded(
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: brandColor,
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: _showOrdersModal,
                 borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: brandColor.withValues(alpha: 0.25),
-                    blurRadius: 6,
-                    offset: const Offset(0, 2),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: brandColor,
+                    borderRadius: BorderRadius.circular(14),
+                    boxShadow: [
+                      BoxShadow(
+                        color: brandColor.withValues(alpha: 0.25),
+                        blurRadius: 6,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
                   ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    width: 36,
-                    height: 36,
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.2),
-                      borderRadius: BorderRadius.circular(10),
-                    ),
-                    child: const Icon(Icons.shopping_bag_outlined, color: Colors.white, size: 20),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.2),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: const [
+                            Text('My Orders & Tracking', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                            SizedBox(height: 1),
+                            Text('Live status, map & chat →', style: TextStyle(fontSize: 10, color: Colors.white70), overflow: TextOverflow.ellipsis),
+                          ],
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: const [
-                        Text('Easy Ordering', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
-                        SizedBox(height: 1),
-                        Text('Browse, pick, enjoy', style: TextStyle(fontSize: 10, color: Colors.white70), overflow: TextOverflow.ellipsis),
-                      ],
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),

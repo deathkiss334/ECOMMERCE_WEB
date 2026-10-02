@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UsersTable;
+use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 
 class UsersTableController extends Controller

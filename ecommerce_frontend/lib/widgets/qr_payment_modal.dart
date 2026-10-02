@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../services/guest_order_storage.dart';
 import '../services/checkout_service.dart';
+import 'order_chat_dialog.dart';
 
 class QrPaymentModal extends StatefulWidget {
   final String orderNumber;
@@ -48,6 +50,7 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
   @override
   void initState() {
     super.initState();
+    GuestOrderStorage.saveOrderNumber(widget.orderNumber);
     _startPolling();
   }
 
@@ -834,6 +837,28 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
                 ),
               ],
               const SizedBox(height: 12),
+
+              // Live Chat with Support Option
+              OutlinedButton.icon(
+                onPressed: () {
+                  showDialog(
+                    context: context,
+                    builder: (_) => OrderChatDialog(
+                      orderNumber: widget.orderNumber,
+                      currentRole: 'customer',
+                      currentUserName: 'Customer',
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat_bubble_outline, size: 14, color: Color(0xFF005CE6)),
+                label: const Text('Need Help? Chat with Store Staff', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF005CE6))),
+                style: OutlinedButton.styleFrom(
+                  side: const BorderSide(color: Color(0xFF93C5FD)),
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+              const SizedBox(height: 10),
 
               // Live Status Footnote
               Row(

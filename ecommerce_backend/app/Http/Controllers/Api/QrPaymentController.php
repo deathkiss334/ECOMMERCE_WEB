@@ -41,7 +41,7 @@ class QrPaymentController extends Controller
                 mkdir($destination, 0755, true);
             }
             $file->move($destination, $filename);
-            $receiptUrl = asset('uploads/receipts/' . $filename);
+            $receiptUrl = '/uploads/receipts/' . $filename;
         }
 
         $refNumber = $request->input('gcash_ref_number') 

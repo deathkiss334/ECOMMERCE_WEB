@@ -11,6 +11,7 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ProductVariant;
+use App\Services\FirebaseService;
 
 class CheckoutController extends Controller
 {
@@ -21,22 +22,19 @@ class CheckoutController extends Controller
             'items.*.id' => 'required|exists:product_variants,id',
             'items.*.qty' => 'required|integer|min:1',
             'payment_method' => 'required|string', 
-            'customer_name' => 'required|string',
-            'customer_phone' => 'required|string',
-            'delivery_address' => 'required|string',
-            'first_name' => 'nullable|string',
-            'second_name' => 'nullable|string',
-            'middle_name' => 'nullable|string',
-            'birthday' => 'nullable|string',
-            'email_address' => 'nullable|string',
-            'is_verified' => 'nullable|boolean',
+            'customer_name' => 'required|string|max:120',
+            'customer_email' => 'nullable|string|max:150',
+            'email_address' => 'nullable|string|max:150',
+            'customer_phone' => 'nullable|string|max:30',
+            'phone' => 'nullable|string|max:30',
+            'delivery_address' => 'nullable|string',
+            'order_type' => 'nullable|string|in:DELIVERY,DINE_IN,delivery,dine_in,pickup,PICKUP',
         ]);
 
-        if (!empty($validated['is_verified'])) {
-            FirebaseService::syncUser($validated);
-        }
+        $orderType = strtoupper($validated['order_type'] ?? 'DELIVERY');
+        if ($orderType === 'PICKUP') $orderType = 'DINE_IN';
 
-        return DB::transaction(function () use ($validated) {
+        return DB::transaction(function () use ($validated, $orderType) {
             $totalAmount = 0;
             $orderItems = [];
 
@@ -58,17 +56,24 @@ class CheckoutController extends Controller
             }
 
             $userId = auth('sanctum')->id() ?? 1;
+            $address = $orderType === 'DINE_IN' ? 'Dine-in (Store)' : ($validated['delivery_address'] ?? 'Dine-in (Store)');
+            $phone = $validated['customer_phone'] ?? $validated['phone'] ?? '';
+            $email = $validated['customer_email'] ?? $validated['email_address'] ?? '';
+            $notes = $orderType === 'DINE_IN' ? 'Dine-in Order' : ('Deliver to: ' . $address . ($phone ? " ($phone)" : ''));
 
             // 2. Create Order in PAYMENT_PENDING status
             $orderNumber = 'DASMA-' . strtoupper(Str::random(6));
             $order = Order::create([
                 'order_number' => $orderNumber,
                 'user_id' => $userId,
-                'status' => $validated['payment_method'] === 'cod' ? 'preparing' : 'PAYMENT_PENDING',
+                'customer_name' => $validated['customer_name'],
+                'customer_email' => $email,
+                'order_type' => $orderType,
+                'status' => $validated['payment_method'] === 'cod' ? 'PREPARING' : 'PAYMENT_PENDING',
                 'payment_status' => 'unpaid',
                 'subtotal' => $totalAmount,
                 'total_amount' => $totalAmount, 
-                'notes' => 'Deliver to: ' . $validated['delivery_address'] . ' (' . $validated['customer_phone'] . ')',
+                'notes' => $notes,
             ]);
 
             // 3. Attach Items to Order

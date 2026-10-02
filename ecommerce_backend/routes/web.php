@@ -7,16 +7,23 @@ use App\Models\Payment;
 use App\Models\PaymentTransaction;
 use Illuminate\Http\Request;
 
+use App\Http\Controllers\DbViewerController;
+
 // ── Root Endpoint: Clean API Status Dashboard (Clarifies Backend vs Frontend) ──
 Route::get('/', function () {
     return view('welcome_api');
 });
 
+// ── SQLite Database Browser Viewer ──
+Route::get('/db-viewer', [DbViewerController::class, 'index']);
+
 // Phase 4: Admin Dashboard Routes
 Route::redirect('/admin', '/admin/orders');
-Route::get('/admin/orders', [OrderController::class, 'index']);
-Route::post('/admin/orders/{id}/status', [OrderController::class, 'updateStatus']);
-Route::post('/admin/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
+Route::get('/admin/orders', [OrderController::class, 'index'])->name('admin.orders.index');
+Route::post('/admin/orders/{id}/status', [OrderController::class, 'updateStatus'])->name('admin.orders.update-status');
+Route::post('/admin/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment'])->name('admin.orders.verify-payment');
+Route::post('/admin/orders/{id}/reject-receipt', [OrderController::class, 'rejectReceipt'])->name('admin.orders.reject-receipt');
+Route::post('/admin/orders/{id}/tracking', [OrderController::class, 'updateTrackingUrl'])->name('admin.orders.tracking');
 
 // Sandbox Payment Proof-of-Concept Portal (Interactive GCash / Maya Simulation)
 Route::get('/sandbox/checkout/{order_number}', function ($order_number) {

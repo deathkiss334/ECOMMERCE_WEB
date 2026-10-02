@@ -12,10 +12,13 @@ class OrderModel {
   final String paymentMethod;
   final bool isRead;
   final String? customerName;
+  final String? customerEmail;
   final String? gcashRefNumber;
   final String? receiptImageUrl;
   final String? adminNotes;
+  final String? rejectionReason;
   final String? verifiedAt;
+  final String? lalamoveTrackingUrl;
 
   OrderModel({
     required this.id,
@@ -31,10 +34,13 @@ class OrderModel {
     required this.paymentMethod,
     this.isRead = false,
     this.customerName,
+    this.customerEmail,
     this.gcashRefNumber,
     this.receiptImageUrl,
     this.adminNotes,
+    this.rejectionReason,
     this.verifiedAt,
+    this.lalamoveTrackingUrl,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -46,19 +52,22 @@ class OrderModel {
       orderNumber: json['order_number'] ?? json['orderId'] ?? '',
       status: json['status'] ?? 'pending',
       paymentStatus: json['payment_status'] ?? 'unpaid',
-      orderType: json['order_type'] ?? 'delivery',
+      orderType: json['order_type'] ?? 'DELIVERY',
       deliveryFee: double.tryParse(json['delivery_fee']?.toString() ?? '0') ?? 0.0,
       totalAmount: double.tryParse((json['total_amount'] ?? json['totalAmount'] ?? '0').toString()) ?? 0.0,
       notes: json['notes'] ?? '',
       createdAt: json['created_at'] ?? json['createdAt'] ?? '',
       items: rawItems.map((i) => OrderItemModel.fromJson(i)).toList(),
-      paymentMethod: latestPayment['payment_method'] ?? json['payment_method'] ?? 'COD',
+      paymentMethod: latestPayment['payment_method'] ?? json['payment_method'] ?? 'GCash / QR',
       isRead: json['is_read'] ?? false,
       customerName: json['customer_name'] ?? json['customerName'],
+      customerEmail: json['customer_email'] ?? json['customerEmail'],
       gcashRefNumber: json['gcash_ref_number'] ?? json['gcashRefNumber'],
       receiptImageUrl: json['receipt_image_url'] ?? json['receiptImageUrl'],
       adminNotes: json['admin_notes'] ?? json['adminNotes'],
+      rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       verifiedAt: json['verified_at'] ?? json['verifiedAt'],
+      lalamoveTrackingUrl: json['lalamove_tracking_url'] ?? json['tracking_url'] ?? json['lalamoveTrackingUrl'],
     );
   }
 
@@ -76,10 +85,13 @@ class OrderModel {
     String? paymentMethod,
     bool? isRead,
     String? customerName,
+    String? customerEmail,
     String? gcashRefNumber,
     String? receiptImageUrl,
     String? adminNotes,
+    String? rejectionReason,
     String? verifiedAt,
+    String? lalamoveTrackingUrl,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -95,10 +107,13 @@ class OrderModel {
       paymentMethod: paymentMethod ?? this.paymentMethod,
       isRead: isRead ?? this.isRead,
       customerName: customerName ?? this.customerName,
+      customerEmail: customerEmail ?? this.customerEmail,
       gcashRefNumber: gcashRefNumber ?? this.gcashRefNumber,
       receiptImageUrl: receiptImageUrl ?? this.receiptImageUrl,
       adminNotes: adminNotes ?? this.adminNotes,
+      rejectionReason: rejectionReason ?? this.rejectionReason,
       verifiedAt: verifiedAt ?? this.verifiedAt,
+      lalamoveTrackingUrl: lalamoveTrackingUrl ?? this.lalamoveTrackingUrl,
     );
   }
 
@@ -114,48 +129,55 @@ class OrderModel {
   }
 
   bool get isOverdue {
-    return status.toLowerCase() == 'pending' && elapsedMinutes >= 5;
+    final s = status.toLowerCase();
+    return (s == 'pending' || s == 'awaiting_verification') && elapsedMinutes >= 5;
   }
 
   String get orderTypeDisplay {
-    switch (orderType.toLowerCase()) {
-      case 'dine_in':
-        return '🍽️ Dine In';
-      case 'takeout':
-        return '🛍️ Takeout';
-      case 'delivery':
-      default:
-        return '🛵 Delivery';
+    final t = orderType.toUpperCase();
+    if (t == 'DINE_IN' || t == 'DINE-IN' || t == 'DINE IN' || t == 'PICKUP' || t == 'TAKEOUT') {
+      return '🍽️ Dine-in';
     }
+    return '🛵 Delivery';
   }
 
   String get statusDisplay {
-    switch (status.toLowerCase()) {
-      case 'pending':
-        return 'Pending Confirmation';
-      case 'preparing':
-        return 'Preparing / Packing';
-      case 'dispatched':
+    switch (status.toUpperCase()) {
+      case 'AWAITING_VERIFICATION':
+        return 'Awaiting Verification ⏳';
+      case 'PAYMENT_REJECTED':
+        return 'Payment Rejected ❌';
+      case 'PREPARING':
+        return 'Preparing / Kitchen 🍳';
+      case 'OUT_FOR_DELIVERY':
+      case 'DISPATCHED':
         return 'Out for Delivery 🛵';
-      case 'delivered':
+      case 'RIDER_ARRIVED':
+        return 'Rider Arrived 📍';
+      case 'DELIVERED':
         return 'Delivered 🎉';
-      case 'cancelled':
-        return 'Cancelled / Refunded';
+      case 'CANCELLED':
+        return 'Cancelled / Closed ✖️';
+      case 'PENDING':
       default:
-        return status;
+        return 'Awaiting Verification ⏳';
     }
   }
 
   int get stepIndex {
-    switch (status.toLowerCase()) {
-      case 'pending':
+    switch (status.toUpperCase()) {
+      case 'AWAITING_VERIFICATION':
+      case 'PENDING':
         return 0;
-      case 'preparing':
+      case 'PREPARING':
         return 1;
-      case 'dispatched':
+      case 'OUT_FOR_DELIVERY':
+      case 'DISPATCHED':
         return 2;
-      case 'delivered':
+      case 'RIDER_ARRIVED':
         return 3;
+      case 'DELIVERED':
+        return 4;
       default:
         return -1;
     }

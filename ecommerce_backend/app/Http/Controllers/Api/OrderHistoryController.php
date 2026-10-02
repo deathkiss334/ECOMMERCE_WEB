@@ -9,10 +9,34 @@ use App\Models\Review;
 
 class OrderHistoryController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        // For demonstration, always loading orders for the default user ID 1
-        return Order::with('items')->where('user_id', 1)->orderBy('created_at', 'desc')->get();
+        $user = $request->user('sanctum');
+        $query = Order::with(['items', 'latestPayment'])->orderBy('created_at', 'desc');
+
+        if ($user && ($user->role ?? '') !== 'guest') {
+            $query->where('user_id', $user->id);
+        } else {
+            // For guest devices, strictly limit orders to those placed on this device
+            $orderNumbers = $request->query('order_numbers');
+            $email = $request->query('email');
+
+            if ($orderNumbers && trim($orderNumbers) !== '') {
+                $numbers = array_values(array_filter(array_map('trim', explode(',', $orderNumbers))));
+                if (!empty($numbers)) {
+                    $query->whereIn('order_number', $numbers);
+                } else {
+                    return response()->json([]);
+                }
+            } elseif ($email && trim($email) !== '' && !str_contains(strtolower($email), 'guest')) {
+                $query->where('customer_email', trim($email));
+            } else {
+                // Other devices or new guests with no local order history see 0 orders
+                return response()->json([]);
+            }
+        }
+
+        return response()->json($query->get());
     }
 
     public function storeReview(Request $request)

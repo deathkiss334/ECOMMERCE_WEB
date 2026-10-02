@@ -39,21 +39,65 @@ class AdminController extends Controller
      * @param int $id
      * @return JsonResponse
      */
-    public function updateOrderStatus(Request $request, int $id): JsonResponse
+    public function updateOrderStatus(Request $request, $id): JsonResponse
     {
         $request->validate([
             'status' => 'required|string',
         ]);
 
-        $order = Order::with('latestPayment')->findOrFail($id);
+        $order = Order::with('latestPayment')
+            ->where('order_number', $id)
+            ->orWhere('id', $id)
+            ->firstOrFail();
 
-        $order->status = $request->status;
+        $order->status = strtoupper($request->status);
+        if ($order->status === 'DELIVERED') {
+            $order->payment_status = 'paid';
+        }
+
+        if ($request->filled('lalamove_tracking_url')) {
+            $order->lalamove_tracking_url = $request->input('lalamove_tracking_url');
+        } elseif ($request->filled('tracking_url')) {
+            $order->lalamove_tracking_url = $request->input('tracking_url');
+        }
+
         $order->save();
 
         \App\Services\FirebaseService::syncOrder($order);
 
         return response()->json([
+            'success' => true,
             'message' => "Order #{$order->order_number} status updated to {$order->status}.",
+            'order' => $order,
+        ], Response::HTTP_OK);
+    }
+
+    /**
+     * PATCH /api/orders/{orderId}/tracking
+     * PATCH /api/admin/orders/{orderId}/tracking
+     * Update Lalamove tracking link.
+     */
+    public function updateTrackingUrl(Request $request, $id): JsonResponse
+    {
+        $request->validate([
+            'tracking_url' => 'nullable|string',
+            'lalamove_tracking_url' => 'nullable|string',
+        ]);
+
+        $order = Order::where('order_number', $id)
+            ->orWhere('id', $id)
+            ->firstOrFail();
+
+        $trackingUrl = $request->input('lalamove_tracking_url') ?? $request->input('tracking_url');
+        $order->lalamove_tracking_url = $trackingUrl;
+        $order->save();
+
+        \App\Services\FirebaseService::syncOrder($order);
+
+        return response()->json([
+            'success' => true,
+            'message' => "Lalamove tracking link updated for Order #{$order->order_number}.",
+            'lalamove_tracking_url' => $trackingUrl,
             'order' => $order,
         ], Response::HTTP_OK);
     }
@@ -82,7 +126,7 @@ class AdminController extends Controller
                 $order->latestPayment->update(['status' => 'succeeded']);
             }
             $order->update([
-                'status' => 'PAID',
+                'status' => 'PREPARING',
                 'payment_status' => 'paid',
                 'verified_at' => now(),
                 'admin_notes' => $notes,
@@ -93,8 +137,9 @@ class AdminController extends Controller
                 $order->latestPayment->update(['status' => 'failed']);
             }
             $order->update([
-                'status' => 'REJECTED',
+                'status' => 'PAYMENT_REJECTED',
                 'payment_status' => 'rejected',
+                'rejection_reason' => $notes,
                 'admin_notes' => $notes,
             ]);
             $msg = "Order #{$order->order_number} rejected. Customer requested to re-upload proof.";

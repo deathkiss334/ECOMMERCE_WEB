@@ -6,60 +6,95 @@ use Illuminate\Database\Eloquent\Model;
 
 class OrderItem extends Model
 {
-    protected $table = 'order_details';
-    protected $primaryKey = 'od_id';
+    protected $table = 'order_items';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
-        'od_id',
+        'id',
         'order_id',
-        'product_id',
-        'product_name',
-        'quantity',
-        'unit_price',
-        'subtotal',
-
-        // Compatibility fields
         'product_variant_id',
         'product_name_snapshot',
         'variant_name_snapshot',
+        'unit_price',
+        'quantity',
         'total_price',
+        'special_instructions',
+
+        // Compatibility fields
+        'od_id',
+        'product_id',
+        'product_name',
+        'subtotal',
     ];
 
     public function getIdAttribute()
     {
-        return $this->attributes['od_id'] ?? $this->attributes['id'] ?? null;
+        return $this->attributes['id'] ?? $this->attributes['od_id'] ?? null;
+    }
+
+    public function setIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+    }
+
+    public function getOdIdAttribute()
+    {
+        return $this->attributes['id'] ?? $this->attributes['od_id'] ?? null;
+    }
+
+    public function setOdIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
     }
 
     public function getTotalPriceAttribute()
     {
-        return $this->attributes['subtotal'] ?? $this->attributes['total_price'] ?? 0.00;
+        return (float) ($this->attributes['total_price'] ?? $this->attributes['subtotal'] ?? 0.00);
     }
 
     public function setTotalPriceAttribute($value)
     {
-        $this->attributes['subtotal'] = $value;
+        $this->attributes['total_price'] = $value;
+    }
+
+    public function getSubtotalAttribute()
+    {
+        return (float) ($this->attributes['total_price'] ?? $this->attributes['subtotal'] ?? 0.00);
+    }
+
+    public function setSubtotalAttribute($value)
+    {
         $this->attributes['total_price'] = $value;
     }
 
     public function getProductNameSnapshotAttribute()
     {
-        return $this->attributes['product_name'] ?? $this->attributes['product_name_snapshot'] ?? '';
+        return $this->attributes['product_name_snapshot'] ?? $this->attributes['product_name'] ?? '';
     }
 
     public function setProductNameSnapshotAttribute($value)
     {
-        $this->attributes['product_name'] = $value;
+        $this->attributes['product_name_snapshot'] = $value;
+    }
+
+    public function getProductNameAttribute()
+    {
+        return $this->attributes['product_name_snapshot'] ?? $this->attributes['product_name'] ?? '';
+    }
+
+    public function setProductNameAttribute($value)
+    {
         $this->attributes['product_name_snapshot'] = $value;
     }
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'order_id');
+        return $this->belongsTo(Order::class, 'order_id', 'id');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'product_id');
+        return $this->belongsTo(Product::class, 'product_id', 'id');
     }
 
     public function productVariant()

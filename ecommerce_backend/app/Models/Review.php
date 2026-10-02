@@ -6,58 +6,130 @@ use Illuminate\Database\Eloquent\Model;
 
 class Review extends Model
 {
-    protected $table = 'review';
-    protected $primaryKey = 'review_id';
+    protected $table = 'reviews';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
+        'id',
+        'user_id',
+        'product_id',
+        'rating',
+        'comment',
+
+        // Compatibility fields
         'review_id',
         'review_desc',
-        'product_id',
         'reviewer_id',
         'star_rating',
         'reviewee_id',
-
-        // Compatibility fields
-        'user_id',
         'order_id',
-        'rating',
-        'comment',
     ];
+
+    public function getIdAttribute()
+    {
+        return $this->attributes['id'] ?? $this->attributes['review_id'] ?? null;
+    }
+
+    public function setIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+        $this->attributes['review_id'] = $value;
+    }
+
+    public function getReviewIdAttribute()
+    {
+        return $this->attributes['id'] ?? $this->attributes['review_id'] ?? null;
+    }
+
+    public function setReviewIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+        $this->attributes['review_id'] = $value;
+    }
+
+    public function getUserIdAttribute()
+    {
+        return $this->attributes['user_id'] ?? $this->attributes['reviewer_id'] ?? null;
+    }
+
+    public function setUserIdAttribute($value)
+    {
+        $this->attributes['user_id'] = $value;
+        $this->attributes['reviewer_id'] = $value;
+    }
 
     public function getReviewerIdAttribute()
     {
-        return $this->attributes['reviewer_id'] ?? $this->attributes['user_id'] ?? null;
+        return $this->attributes['user_id'] ?? $this->attributes['reviewer_id'] ?? null;
     }
 
     public function setReviewerIdAttribute($value)
     {
-        $this->attributes['reviewer_id'] = $value;
         $this->attributes['user_id'] = $value;
+        $this->attributes['reviewer_id'] = $value;
+    }
+
+    public function getRatingAttribute()
+    {
+        return (float) ($this->attributes['rating'] ?? $this->attributes['star_rating'] ?? 5.00);
+    }
+
+    public function setRatingAttribute($value)
+    {
+        $this->attributes['rating'] = $value;
+        $this->attributes['star_rating'] = $value;
     }
 
     public function getStarRatingAttribute()
     {
-        return $this->attributes['star_rating'] ?? $this->attributes['rating'] ?? 5.00;
+        return (float) ($this->attributes['rating'] ?? $this->attributes['star_rating'] ?? 5.00);
     }
 
     public function setStarRatingAttribute($value)
     {
-        $this->attributes['star_rating'] = $value;
         $this->attributes['rating'] = $value;
+        $this->attributes['star_rating'] = $value;
+    }
+
+    public function getCommentAttribute()
+    {
+        return $this->attributes['comment'] ?? $this->attributes['review_desc'] ?? null;
+    }
+
+    public function setCommentAttribute($value)
+    {
+        $this->attributes['comment'] = $value;
+        $this->attributes['review_desc'] = $value;
+    }
+
+    public function getReviewDescAttribute()
+    {
+        return $this->attributes['comment'] ?? $this->attributes['review_desc'] ?? null;
+    }
+
+    public function setReviewDescAttribute($value)
+    {
+        $this->attributes['comment'] = $value;
+        $this->attributes['review_desc'] = $value;
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'product_id');
+        return $this->belongsTo(Product::class, 'product_id', 'id');
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     public function reviewer()
     {
-        return $this->belongsTo(User::class, 'reviewer_id', 'user_id');
+        return $this->belongsTo(User::class, 'user_id', 'id');
     }
 
     public function reviewee()
     {
-        return $this->belongsTo(User::class, 'reviewee_id', 'user_id');
+        return $this->belongsTo(User::class, 'reviewee_id', 'id');
     }
 }

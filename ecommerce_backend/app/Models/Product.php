@@ -7,19 +7,10 @@ use Illuminate\Database\Eloquent\Model;
 class Product extends Model
 {
     protected $table = 'products';
-    protected $primaryKey = 'product_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
-        'product_id',
-        'product_name',
-        'product_img',
-        'product_desc',
-        'product_qty',
-        'product_rating',
-        'product_category',
-        'product_price',
-
-        // Compatibility fields
+        'id',
         'category_id',
         'name',
         'slug',
@@ -29,32 +20,75 @@ class Product extends Model
         'total_reviews',
         'is_active',
         'is_featured',
+
+        // Compatibility fields
+        'product_id',
+        'product_name',
+        'product_img',
+        'product_desc',
+        'product_qty',
+        'product_rating',
+        'product_category',
+        'product_price',
     ];
 
     public function getIdAttribute()
     {
-        return $this->attributes['product_id'] ?? $this->attributes['id'] ?? null;
+        return $this->attributes['id'] ?? $this->attributes['product_id'] ?? null;
+    }
+
+    public function setIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
+    }
+
+    public function getProductIdAttribute()
+    {
+        return $this->attributes['id'] ?? $this->attributes['product_id'] ?? null;
+    }
+
+    public function setProductIdAttribute($value)
+    {
+        $this->attributes['id'] = $value;
     }
 
     public function getNameAttribute()
     {
-        return $this->attributes['product_name'] ?? $this->attributes['name'] ?? null;
+        return $this->attributes['name'] ?? $this->attributes['product_name'] ?? null;
     }
 
     public function setNameAttribute($value)
     {
-        $this->attributes['product_name'] = $value;
+        $this->attributes['name'] = $value;
+    }
+
+    public function getProductNameAttribute()
+    {
+        return $this->attributes['name'] ?? $this->attributes['product_name'] ?? null;
+    }
+
+    public function setProductNameAttribute($value)
+    {
         $this->attributes['name'] = $value;
     }
 
     public function getBasePriceAttribute()
     {
-        return $this->attributes['product_price'] ?? $this->attributes['base_price'] ?? 0.00;
+        return $this->attributes['base_price'] ?? $this->attributes['product_price'] ?? 0.00;
     }
 
     public function setBasePriceAttribute($value)
     {
-        $this->attributes['product_price'] = $value;
+        $this->attributes['base_price'] = $value;
+    }
+
+    public function getProductPriceAttribute()
+    {
+        return $this->attributes['base_price'] ?? $this->attributes['product_price'] ?? 0.00;
+    }
+
+    public function setProductPriceAttribute($value)
+    {
         $this->attributes['base_price'] = $value;
     }
 
@@ -65,16 +99,16 @@ class Product extends Model
 
     public function variants()
     {
-        return $this->hasMany(ProductVariant::class, 'product_id', 'product_id');
+        return $this->hasMany(ProductVariant::class, 'product_id', 'id');
     }
 
     public function images()
     {
-        return $this->hasMany(ProductImage::class, 'product_id', 'product_id');
+        return $this->hasMany(ProductImage::class, 'product_id', 'id');
     }
 
     public function reviews()
     {
-        return $this->hasMany(Review::class, 'product_id', 'product_id');
+        return $this->hasMany(Review::class, 'product_id', 'id');
     }
 }

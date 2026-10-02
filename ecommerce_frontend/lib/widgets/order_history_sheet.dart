@@ -1,15 +1,26 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../models/order_model.dart';
 import '../services/api_service.dart';
+import 'order_chat_dialog.dart';
+import 'order_progress_stepper.dart';
+import 'order_review_dialog.dart';
+
+import '../services/guest_order_storage.dart';
 
 class OrderHistorySheet extends StatefulWidget {
   final List<String>? sessionOrderNumbers;
   final String? userPhone;
+  final String? userEmail;
+  final String? userName;
 
   const OrderHistorySheet({
     super.key,
     this.sessionOrderNumbers,
     this.userPhone,
+    this.userEmail,
+    this.userName,
   });
 
   static const Color brandColor = Color(0xFFE8411E);
@@ -19,21 +30,98 @@ class OrderHistorySheet extends StatefulWidget {
 }
 
 class _OrderHistorySheetState extends State<OrderHistorySheet> {
-  late Future<List<OrderModel>> _ordersFuture;
+  List<OrderModel>? _orders;
+  bool _isLoading = true;
+  Timer? _pollTimer;
+  String? _selectedOrderId;
+  final TextEditingController _lookupController = TextEditingController();
+  bool _isLookingUp = false;
 
   @override
   void initState() {
     super.initState();
     _loadOrders();
+    _pollTimer = Timer.periodic(const Duration(seconds: 3), (_) {
+      _silentRefreshOrders();
+    });
   }
 
-  void _loadOrders() {
-    setState(() {
-      _ordersFuture = ApiService.getOrders(
-        orderNumbers: widget.sessionOrderNumbers,
-        phone: widget.userPhone,
-      );
-    });
+  @override
+  void dispose() {
+    _pollTimer?.cancel();
+    _lookupController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadOrders() async {
+    setState(() => _isLoading = true);
+    final list = await _fetchOrdersForThisDevice();
+    if (mounted) {
+      setState(() {
+        _orders = list;
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _silentRefreshOrders() async {
+    try {
+      final list = await _fetchOrdersForThisDevice();
+      if (mounted) {
+        setState(() {
+          _orders = list;
+        });
+      }
+    } catch (_) {}
+  }
+
+  Future<List<OrderModel>> _fetchOrdersForThisDevice() async {
+    // 1. Get stored orders on this device
+    final stored = await GuestOrderStorage.getStoredOrderNumbers();
+    final combined = <String>{};
+    if (widget.sessionOrderNumbers != null) {
+      combined.addAll(widget.sessionOrderNumbers!);
+    }
+    combined.addAll(stored);
+
+    return ApiService.getOrders(
+      orderNumbers: combined.toList(),
+      phone: widget.userPhone,
+      email: widget.userEmail,
+    );
+  }
+
+  Future<void> _handleLookup() async {
+    final orderNum = _lookupController.text.trim();
+    if (orderNum.isEmpty) return;
+
+    setState(() => _isLookingUp = true);
+    try {
+      final order = await ApiService.trackOrder(orderNum);
+      await GuestOrderStorage.saveOrderNumber(order.orderNumber);
+      _lookupController.clear();
+      _loadOrders();
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order #${order.orderNumber} added to this device!'),
+            backgroundColor: const Color(0xFF059669),
+          ),
+        );
+        _openChat(order);
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Order "$orderNum" not found. Please verify your order number.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLookingUp = false);
+    }
   }
 
   @override
@@ -84,72 +172,102 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
               ),
               const Divider(height: 1, color: Color(0xFFE5E7EB)),
 
+              // Quick Order Lookup (Enter Order # to track & chat)
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: SizedBox(
+                        height: 40,
+                        child: TextField(
+                          controller: _lookupController,
+                          style: const TextStyle(fontSize: 12),
+                          decoration: InputDecoration(
+                            hintText: 'Enter Order # to track & chat (e.g. DASMA-OWE94A)...',
+                            prefixIcon: const Icon(Icons.search, size: 16, color: Colors.grey),
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
+                            isDense: true,
+                          ),
+                          onSubmitted: (_) => _handleLookup(),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    ElevatedButton(
+                      onPressed: _isLookingUp ? null : _handleLookup,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: OrderHistorySheet.brandColor,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      ),
+                      child: _isLookingUp
+                          ? const SizedBox(width: 14, height: 14, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                          : const Text('Track & Chat', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ),
+              ),
+              const Divider(height: 1, color: Color(0xFFE5E7EB)),
+
               // Orders List
               Expanded(
-                child: FutureBuilder<List<OrderModel>>(
-                  future: _ordersFuture,
-                  builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: OrderHistorySheet.brandColor));
-                    }
-
-                    if (snapshot.hasError) {
-                      return Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(24),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.error_outline, color: Colors.red, size: 40),
-                              const SizedBox(height: 12),
-                              Text('Failed to load orders: ${snapshot.error}', textAlign: TextAlign.center),
-                              const SizedBox(height: 12),
-                              ElevatedButton(
-                                onPressed: _loadOrders,
-                                style: ElevatedButton.styleFrom(backgroundColor: OrderHistorySheet.brandColor),
-                                child: const Text('Try Again', style: TextStyle(color: Colors.white)),
+                child: _isLoading && _orders == null
+                    ? const Center(child: CircularProgressIndicator(color: OrderHistorySheet.brandColor))
+                    : (_orders == null || _orders!.isEmpty)
+                        ? Center(
+                            child: Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: const [
+                                  Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
+                                  SizedBox(height: 12),
+                                  Text(
+                                    'No orders found on this device',
+                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF4B5563)),
+                                  ),
+                                  SizedBox(height: 6),
+                                  Text(
+                                    'Orders placed on this device will appear here automatically. You can also paste your Order # in the search box above to track live.',
+                                    textAlign: TextAlign.center,
+                                    style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                                  ),
+                                ],
                               ),
-                            ],
+                            ),
+                          )
+                        : RefreshIndicator(
+                            color: OrderHistorySheet.brandColor,
+                            onRefresh: () async => _loadOrders(),
+                            child: ListView.builder(
+                              padding: const EdgeInsets.all(16),
+                              itemCount: _orders!.length,
+                              itemBuilder: (context, index) {
+                                final order = _orders![index];
+                                return _buildOrderCard(order);
+                              },
+                            ),
                           ),
-                        ),
-                      );
-                    }
-
-                    final orders = snapshot.data ?? [];
-
-                    if (orders.isEmpty) {
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: const [
-                            Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
-                            SizedBox(height: 12),
-                            Text('No orders placed yet', style: TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF4B5563))),
-                            SizedBox(height: 4),
-                            Text('Add some delicious Filipino dishes to your cart!', style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF))),
-                          ],
-                        ),
-                      );
-                    }
-
-                    return RefreshIndicator(
-                      color: OrderHistorySheet.brandColor,
-                      onRefresh: () async => _loadOrders(),
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(16),
-                        itemCount: orders.length,
-                        itemBuilder: (context, index) {
-                          final order = orders[index];
-                          return _buildOrderCard(order);
-                        },
-                      ),
-                    );
-                  },
-                ),
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+
+  void _openChat(OrderModel order) {
+    setState(() => _selectedOrderId = order.orderNumber);
+    showDialog(
+      context: context,
+      builder: (_) => OrderChatDialog(
+        orderNumber: order.orderNumber,
+        currentRole: 'customer',
+        currentUserName: order.customerName ?? 'Customer',
+        customerName: order.customerName,
       ),
     );
   }
@@ -164,8 +282,13 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
         statusTextColor = const Color(0xFF1D4ED8);
         break;
       case 'dispatched':
+      case 'out_for_delivery':
         statusBgColor = const Color(0xFFE0E7FF);
         statusTextColor = const Color(0xFF4338CA);
+        break;
+      case 'rider_arrived':
+        statusBgColor = const Color(0xFFFEF3C7);
+        statusTextColor = const Color(0xFFB45309);
         break;
       case 'delivered':
         statusBgColor = const Color(0xFFD1FAE5);
@@ -181,201 +304,279 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
         break;
     }
 
+    final bool isSelected = _selectedOrderId == order.orderNumber;
+    final bool hasLalamove = order.lalamoveTrackingUrl != null &&
+        order.lalamoveTrackingUrl!.trim().isNotEmpty &&
+        (order.status.toUpperCase() == 'OUT_FOR_DELIVERY' ||
+            order.status.toUpperCase() == 'DISPATCHED' ||
+            order.status.toUpperCase() == 'RIDER_ARRIVED' ||
+            order.status.toUpperCase() == 'DELIVERED');
+
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(
+          color: isSelected ? OrderHistorySheet.brandColor : const Color(0xFFE5E7EB),
+          width: isSelected ? 2 : 1,
+        ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.03),
-            blurRadius: 6,
+            color: isSelected
+                ? OrderHistorySheet.brandColor.withValues(alpha: 0.1)
+                : Colors.black.withValues(alpha: 0.03),
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
       ),
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          // Order Header
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
-                  Text(
-                    order.orderNumber,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
-                  ),
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                    decoration: BoxDecoration(
-                      color: OrderHistorySheet.brandColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(6),
+      child: Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(16),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _openChat(order),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Order Header
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          order.orderNumber,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF111827)),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: OrderHistorySheet.brandColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            order.orderTypeDisplay,
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: OrderHistorySheet.brandColor),
+                          ),
+                        ),
+                      ],
                     ),
-                    child: Text(
-                      order.orderTypeDisplay,
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: OrderHistorySheet.brandColor),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: statusBgColor,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        order.statusDisplay,
+                        style: TextStyle(color: statusTextColor, fontSize: 11, fontWeight: FontWeight.bold),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Sequential Progress Step Indicator
+                OrderProgressStepper(
+                  status: order.status,
+                  brandColor: OrderHistorySheet.brandColor,
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                const SizedBox(height: 10),
+
+                // Lalamove Rider Live Tracking Button
+                if (hasLalamove) ...[
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        final uri = Uri.parse(order.lalamoveTrackingUrl!);
+                        if (await canLaunchUrl(uri)) {
+                          await launchUrl(uri, mode: LaunchMode.externalApplication);
+                        }
+                      },
+                      icon: const Text('🛵', style: TextStyle(fontSize: 18)),
+                      label: const Text(
+                        'Track Rider on Lalamove',
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFFEA580C),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 12),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        elevation: 2,
+                      ),
                     ),
                   ),
                 ],
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: statusBgColor,
-                  borderRadius: BorderRadius.circular(12),
+
+                // Items summary
+                Column(
+                  children: [
+                    ...order.items.map((item) {
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              '${item.quantity}x  ${item.productName}',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w500),
+                            ),
+                            Text(
+                              '₱${item.totalPrice.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 12, color: Color(0xFF111827), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      );
+                    }),
+                    if (order.deliveryFee > 0)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 4),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            const Text(
+                              '🛵 Delivery Fee',
+                              style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontStyle: FontStyle.italic),
+                            ),
+                            Text(
+                              '₱${order.deliveryFee.toStringAsFixed(2)}',
+                              style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), fontWeight: FontWeight.w600),
+                            ),
+                          ],
+                        ),
+                      ),
+                  ],
                 ),
-                child: Text(
-                  order.statusDisplay,
-                  style: TextStyle(color: statusTextColor, fontSize: 11, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
 
-          // Progress Step Indicator
-          _buildTrackerSteps(order.stepIndex),
-          const SizedBox(height: 12),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
-          const SizedBox(height: 10),
+                const SizedBox(height: 10),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                const SizedBox(height: 10),
 
-          // Items summary
-          Column(
-            children: [
-              ...order.items.map((item) {
-                return Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 2),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        '${item.quantity}x  ${item.productName}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF374151), fontWeight: FontWeight.w500),
-                      ),
-                      Text(
-                        '₱${item.totalPrice.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 12, color: Color(0xFF111827), fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
-              if (order.deliveryFee > 0)
-                Padding(
-                  padding: const EdgeInsets.only(top: 4),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      const Text(
-                        '🛵 Delivery Fee',
-                        style: TextStyle(fontSize: 11, color: Color(0xFF6B7280), fontStyle: FontStyle.italic),
-                      ),
-                      Text(
-                        '₱${order.deliveryFee.toStringAsFixed(2)}',
-                        style: const TextStyle(fontSize: 11, color: Color(0xFF4B5563), fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                ),
-            ],
-          ),
-
-          const SizedBox(height: 10),
-          const Divider(height: 1, color: Color(0xFFF3F4F6)),
-          const SizedBox(height: 10),
-
-          // Total & Payment
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
-                children: [
+                // Rejection Reason Alert (if rejected)
+                if (order.rejectionReason != null && order.rejectionReason!.isNotEmpty) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
-                      color: const Color(0xFFF3F4F6),
-                      borderRadius: BorderRadius.circular(4),
+                      color: const Color(0xFFFEF2F2),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: const Color(0xFFFCA5A5)),
                     ),
-                    child: Text(
-                      order.paymentMethod.toUpperCase(),
-                      style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4B5563)),
-                    ),
-                  ),
-                  const SizedBox(width: 6),
-                  Text(
-                    order.paymentStatus == 'paid' ? '• Paid' : '• Unpaid',
-                    style: TextStyle(
-                      fontSize: 11,
-                      color: order.paymentStatus == 'paid' ? Colors.green : Colors.amber.shade800,
-                      fontWeight: FontWeight.bold,
+                    child: Row(
+                      children: [
+                        const Icon(Icons.error_outline, color: Color(0xFFDC2626), size: 18),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            'Payment Rejected: ${order.rejectionReason}',
+                            style: const TextStyle(color: Color(0xFF991B1B), fontSize: 11, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ],
-              ),
-              Text(
-                'Total: ₱${order.totalAmount.toStringAsFixed(2)}',
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: OrderHistorySheet.brandColor),
-              ),
-            ],
+
+                // Total & Payment
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF3F4F6),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            order.paymentMethod.toUpperCase(),
+                            style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Color(0xFF4B5563)),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          order.paymentStatus == 'paid' ? '• Paid' : '• Unpaid',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: order.paymentStatus == 'paid' ? Colors.green : Colors.amber.shade800,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Text(
+                      'Total: ₱${order.totalAmount.toStringAsFixed(2)}',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: OrderHistorySheet.brandColor),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                const Divider(height: 1, color: Color(0xFFF3F4F6)),
+                const SizedBox(height: 10),
+
+                // Customer Actions: Live Chat & Post-Order Rating
+                Row(
+                  children: [
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: () => _openChat(order),
+                        icon: const Icon(Icons.chat_bubble_outline, size: 15, color: OrderHistorySheet.brandColor),
+                        label: const Text(
+                          'Chat with Store',
+                          style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: OrderHistorySheet.brandColor),
+                        ),
+                        style: OutlinedButton.styleFrom(
+                          side: const BorderSide(color: OrderHistorySheet.brandColor),
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                      ),
+                    ),
+                    if (order.status.toUpperCase() == 'DELIVERED') ...[
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () {
+                            showDialog(
+                              context: context,
+                              builder: (_) => OrderReviewDialog(
+                                orderNumber: order.orderNumber,
+                                onReviewSubmitted: _loadOrders,
+                              ),
+                            );
+                          },
+                          icon: const Icon(Icons.star_rounded, size: 16, color: Colors.white),
+                          label: const Text(
+                            'Rate & Review',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFF59E0B),
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
-    );
-  }
-
-  Widget _buildTrackerSteps(int activeStep) {
-    final steps = ['Confirmed', 'Packing', 'On Delivery', 'Delivered'];
-
-    return Row(
-      children: List.generate(steps.length * 2 - 1, (index) {
-        if (index.isOdd) {
-          final stepBefore = index ~/ 2;
-          final isCompleted = activeStep > stepBefore;
-          return Expanded(
-            child: Container(
-              height: 2,
-              color: isCompleted ? OrderHistorySheet.brandColor : const Color(0xFFE5E7EB),
-            ),
-          );
-        }
-
-        final stepIndex = index ~/ 2;
-        final isActive = activeStep >= stepIndex;
-        final isCurrent = activeStep == stepIndex;
-
-        return Column(
-          children: [
-            Container(
-              width: 18,
-              height: 18,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: isActive ? OrderHistorySheet.brandColor : const Color(0xFFE5E7EB),
-                border: isCurrent
-                    ? Border.all(color: OrderHistorySheet.brandColor.withValues(alpha: 0.3), width: 3)
-                    : null,
-              ),
-              child: isActive
-                  ? const Icon(Icons.check, size: 10, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              steps[stepIndex],
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: isActive ? FontWeight.bold : FontWeight.normal,
-                color: isActive ? const Color(0xFF111827) : const Color(0xFF9CA3AF),
-              ),
-            ),
-          ],
-        );
-      }),
     );
   }
 }
