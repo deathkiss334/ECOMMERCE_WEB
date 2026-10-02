@@ -106,11 +106,6 @@ class _HomePageState extends State<HomePage> {
       'Bring home authentic Filipino flavors that everyone will love.',
       'assets/landing5.webp',
     ),
-    _Slide(
-      'Mabilis na delivery,\ndiretso sa lamesa.',
-      'Order now and enjoy hot meals delivered fast to your doorstep.',
-      'assets/landing6.webp',
-    ),
   ];
 
   @override
