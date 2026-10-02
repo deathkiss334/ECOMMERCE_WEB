@@ -30,7 +30,6 @@ class CheckoutController extends Controller
             'delivery_address' => 'nullable|string',
             'order_type' => 'nullable|string|in:DELIVERY,DINE_IN,delivery,dine_in,pickup,PICKUP',
         ]);
-
         $orderType = strtoupper($validated['order_type'] ?? 'DELIVERY');
         if ($orderType === 'PICKUP') $orderType = 'DINE_IN';
 
@@ -94,7 +93,7 @@ class CheckoutController extends Controller
 
             // 5A. Handle Cash On Delivery
             if ($validated['payment_method'] === 'cod') {
-                FirebaseService::syncOrder($order);
+            
                 return response()->json([
                     'success' => true,
                     'orderId' => $order->order_number,
@@ -111,7 +110,7 @@ class CheckoutController extends Controller
             // 5B. Manual GCash QR Payment
             $qrImageUrl = asset('assets/gcash_qr.png');
 
-            FirebaseService::syncOrder($order);
+    
 
             return response()->json([
                 'success' => true,
@@ -126,7 +125,7 @@ class CheckoutController extends Controller
                 'status' => 'PAYMENT_PENDING',
                 'payment_status' => 'unpaid',
                 'message' => 'Please scan GCash QR code, send exactly ₱' . number_format($totalAmount, 2) . ', and upload receipt proof.'
-            ], 200);
+            ], 201);
         });
     }
 }

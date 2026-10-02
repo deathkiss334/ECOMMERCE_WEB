@@ -241,7 +241,7 @@ class AuthAndUserManagementTest extends TestCase
             ]);
 
         $this->assertDatabaseHas('users', [
-            'id' => $user->id,
+            'user_id' => $user->id,
             'name' => 'Updated Name',
             'phone' => '09222222222',
         ]);

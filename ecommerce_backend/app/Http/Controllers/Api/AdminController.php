@@ -63,7 +63,7 @@ class AdminController extends Controller
 
         $order->save();
 
-        \App\Services\FirebaseService::syncOrder($order);
+    
 
         return response()->json([
             'success' => true,
@@ -145,7 +145,6 @@ class AdminController extends Controller
             $msg = "Order #{$order->order_number} rejected. Customer requested to re-upload proof.";
         }
 
-        \App\Services\FirebaseService::syncOrder($order);
 
         return response()->json([
             'success' => true,

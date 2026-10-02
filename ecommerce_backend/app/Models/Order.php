@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $table = 'orders';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'order_id';
 
     protected $fillable = [
         'id',
@@ -38,6 +38,10 @@ class Order extends Model
         'order_type',
         'gcash_reference_no',
         'gcash_receipt_path',
+        'gcash_ref_number',
+        'receipt_image_url',
+        'admin_notes',
+        'verified_at',
     ];
 
     public function getIdAttribute()
@@ -167,12 +171,12 @@ class Order extends Model
 
     public function payments()
     {
-        return $this->hasMany(Payment::class, 'order_id', 'id');
+        return $this->hasMany(Payment::class, 'order_id', 'order_id');
     }
 
     public function latestPayment()
     {
-        return $this->hasOne(Payment::class, 'order_id', 'id')->latestOfMany();
+        return $this->hasOne(Payment::class, 'order_id', 'order_id')->latestOfMany('created_at');
     }
 
     public function chats()
