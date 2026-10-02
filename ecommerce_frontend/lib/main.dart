@@ -18,7 +18,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'DasmaBITES - Your Favorite Bites, Just a Click Away!',
+      title: "Vanessa's Carinderia - Lutong Bahay, Delivered Fresh!",
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         useMaterial3: true,

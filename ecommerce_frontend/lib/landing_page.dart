@@ -1,6 +1,6 @@
+import 'dart:async';
+import 'dart:ui';
 import 'package:flutter/material.dart';
-import 'models/product_model.dart';
-import 'services/api_service.dart';
 
 void main() => runApp(const LandingPage());
 
@@ -31,33 +31,101 @@ class FoodItem {
 }
 
 const foods = [
+  // 1. Monggo - ₱20
   FoodItem(
-    'Chicken Adobo',
-    'Classic soy-vinegar braise',
-    '₱95',
-    'https://images.unsplash.com/photo-1626082927389-6cd097cdc6ec?w=700',
+    'Ginisang Monggo',
+    'Comforting sautéed mung bean stew with spinach, garlic, and savory chicharon',
+    '₱20',
+    'assets/dish_monggo.webp',
+    'Gulay & Sabaw',
+  ),
+  // 2. Beef Steak - ₱60
+  FoodItem(
+    'Bistek Tagalog (Beef Steak)',
+    'Tender beef slices simmered in savory soy sauce, calamansi, and sweet onions',
+    '₱60',
+    'assets/dish_beef_steak.webp',
     'Ulam',
   ),
+  // 3. Giniling - ₱60
   FoodItem(
-    'Pork Sinigang',
-    'Sour tamarind soup, just like home',
-    '₱120',
-    'https://images.unsplash.com/photo-1547592180-85f173990554?w=700',
+    'Pork Giniling',
+    'Savory minced pork with potatoes, carrots, and sweet green peas in tomato sauce',
+    '₱60',
+    'assets/dish_giniling.webp',
     'Ulam',
   ),
-  FoodItem(
-    'Pancit Canton',
-    'Stir-fried noodles with vegetables',
-    '₱85',
-    'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=700',
-    'Meryenda',
-  ),
+  // 4. Lumpia - ₱10/pc
   FoodItem(
     'Lumpiang Shanghai',
-    'Crispy golden pork spring rolls',
-    '₱70',
-    'https://images.unsplash.com/photo-1544025162-d76694265947?w=700',
-    'Silog & Sides',
+    'Crispy golden pork spring rolls served with sweet & sour dipping sauce',
+    '₱10/pc',
+    'assets/dish_lumpia.webp',
+    'Sides',
+  ),
+  // 5. Sopas - ₱20
+  FoodItem(
+    'Creamy Chicken Sopas',
+    'Heartwarming macaroni soup with shredded chicken in rich evaporated milk broth',
+    '₱20',
+    'assets/dish_sopas.webp',
+    'Gulay & Sabaw',
+  ),
+  // 6. Spaghetti - ₱20
+  FoodItem(
+    'Pinoy Sweet Spaghetti',
+    'Classic sweet-style party spaghetti topped with sliced hotdogs and grated cheese',
+    '₱20',
+    'assets/dish_spaghetti.webp',
+    'Meryenda & Desserts',
+  ),
+  // 7. Dinakdakan - ₱120
+  FoodItem(
+    'Authentic Dinakdakan',
+    'Char-grilled pork tossed with calamansi, ginger, red onions, and rich creamy dressing',
+    '₱120',
+    'assets/dish_dinakdakan.webp',
+    'Ulam',
+  ),
+  // 8. Pakbet - ₱40
+  FoodItem(
+    'Pinakbet (Pakbet)',
+    'Traditional mixed veggies: squash, eggplant, okra, and sitaw sautéed in bagoong',
+    '₱40',
+    'assets/dish_pakbet.webp',
+    'Gulay & Sabaw',
+  ),
+  // 9. Dinuguan - ₱60
+  FoodItem(
+    'Special Dinuguan',
+    'Hearty and savory pork blood stew with vinegar, garlic, and sili haba',
+    '₱60',
+    'assets/dish_dinuguan.webp',
+    'Ulam',
+  ),
+  // 10. Pansit - ₱20
+  FoodItem(
+    'Pansit Guisado',
+    'Stir-fried noodles with crisp vegetables, pork bits, and savory seasonings',
+    '₱20',
+    'assets/dish_pansit.webp',
+    'Meryenda & Desserts',
+  ),
+  // 11. Curry - ₱60
+  FoodItem(
+    'Pinoy Chicken Curry',
+    'Fragrant Filipino-style curry with tender chicken, potatoes, and bell peppers',
+    '₱60',
+    'assets/dish_curry.webp',
+    'Ulam',
+  ),
+  // 12. Ginataan Bilo-Bilo - ₱150
+  FoodItem(
+    'Ginataang Bilo-Bilo',
+    'Warm sweet coconut stew with chewy glutinous rice balls, sago, and langka',
+    '₱150',
+    'assets/dish_ginataan_bilobilo.webp',
+    'Meryenda & Desserts',
   ),
 ];
 
@@ -69,83 +137,103 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final PageController _pageController = PageController(viewportFraction: 1.0);
-  List<FoodItem> _foods = foods;
+  final ScrollController _scrollController = ScrollController();
+  final GlobalKey _menuSectionKey = GlobalKey();
+  final GlobalKey _aboutSectionKey = GlobalKey();
+
+  Timer? _autoSlideTimer;
+  bool _isHoveringHero = false;
+
+  final List<FoodItem> _foods = foods;
   int _activeSlide = 0;
   int _activeCategory = 0;
   final categories = const [
     'All',
     'Ulam',
-    'Silog & Sides',
-    'Meryenda',
-    'Drinks',
+    'Gulay & Sabaw',
+    'Meryenda & Desserts',
+    'Sides',
   ];
 
   final slides = const [
     _Slide(
       'Lutong bahay,\nsa isang click.',
-      'Your everyday favorites, freshly prepared and delivered to your door.',
-      'assets/landing1.webp',
+      'Your everyday Filipino favorites, freshly cooked and delivered warm to your doorstep.',
+      'assets/hero_carinderia_feast.webp',
     ),
     _Slide(
       'Sarap na\nsulit sa budget.',
-      'Comfort food and sulit meals made for every kind of day.',
-      'assets/landing2.webp',
-    ),
-    _Slide(
-      'May ulam na.\nKain na tayo!',
-      'Discover today’s home-cooked specials from your neighborhood kitchen.',
-      'assets/landing3.webp',
+      'Generous servings and hearty comfort meals made for the whole family.',
+      'assets/hero_family_dining.webp',
     ),
     _Slide(
       'Mainit at\nbagong luto.',
-      'Freshly prepared Filipino dishes ready for lunch and dinner.',
-      'assets/landing4.webp',
+      'Sizzling specials and traditional ulam prepared fresh from our kitchen daily.',
+      'assets/hero_sizzling_sisig.webp',
     ),
     _Slide(
       'Pamilyang busog,\nsayang walang kapantay.',
-      'Bring home authentic Filipino flavors that everyone will love.',
-      'assets/landing5.webp',
+      'Authentic home-cooked flavors delivered fast anywhere in Dasmariñas.',
+      'assets/hero_delivery.webp',
     ),
   ];
 
   @override
   void initState() {
     super.initState();
-    _loadProducts();
+    _startAutoSlide();
   }
 
-  Future<void> _loadProducts() async {
-    try {
-      final products = await ApiService.getProducts();
-      if (!mounted || products.isEmpty) return;
+  void _startAutoSlide() {
+    _autoSlideTimer?.cancel();
+    _autoSlideTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      if (!mounted || !_pageController.hasClients || _isHoveringHero) return;
+      final nextSlide = (_activeSlide + 1) % slides.length;
+      _pageController.animateToPage(
+        nextSlide,
+        duration: const Duration(milliseconds: 650),
+        curve: Curves.easeInOutCubic,
+      );
+    });
+  }
 
-      setState(() {
-        _foods = products.map(_toFoodItem).toList();
-      });
-    } catch (_) {
-      // Keep the bundled catalog available when the API is offline.
+  void _scrollToMenu() {
+    final ctx = _menuSectionKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 600),
+        curve: Curves.easeInOutCubic,
+      );
     }
   }
 
-  FoodItem _toFoodItem(Product product) {
-    final category = product.slug.contains('beverage') || product.slug.contains('drink')
-        ? 'Drinks'
-        : product.slug.contains('snack')
-        ? 'Meryenda'
-        : 'Ulam';
+  void _scrollToAbout() {
+    final ctx = _aboutSectionKey.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOutCubic,
+      );
+    }
+  }
 
-    return FoodItem(
-      product.name,
-      product.description,
-      '₱${product.basePrice.toStringAsFixed(0)}',
-      product.image.isNotEmpty ? product.image : 'assets/assets1.jpg',
-      category,
-    );
+  void _scrollToTop() {
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0,
+        duration: const Duration(milliseconds: 500),
+        curve: Curves.easeInOutCubic,
+      );
+    }
   }
 
   @override
   void dispose() {
+    _autoSlideTimer?.cancel();
     _pageController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
@@ -153,31 +241,42 @@ class _HomePageState extends State<HomePage> {
   Widget build(BuildContext context) {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 700;
+    final isWideFooter = width >= 980;
     final visibleFoods = _activeCategory == 0
-      ? _foods
-      : _foods
+        ? _foods
+        : _foods
               .where((f) => f.category == categories[_activeCategory])
               .toList();
 
     return Scaffold(
+      backgroundColor: const Color(0xFFFAF7F2),
       body: SafeArea(
         child: CustomScrollView(
+          controller: _scrollController,
           slivers: [
             SliverToBoxAdapter(child: _header(compact)),
             SliverToBoxAdapter(child: _hero(compact)),
-            SliverToBoxAdapter(child: _benefits(compact)),
             SliverToBoxAdapter(
-              child: _sectionHeading(
-                'Mga paborito ng kapitbahay',
-                'Freshly cooked, always satisfying.',
-                compact,
+              child: KeyedSubtree(
+                key: _aboutSectionKey,
+                child: _benefits(compact),
+              ),
+            ),
+            SliverToBoxAdapter(
+              child: KeyedSubtree(
+                key: _menuSectionKey,
+                child: _sectionHeading(
+                  'Mga paborito ng kapitbahay',
+                  'Freshly cooked lutong bahay dishes, always hot and satisfying.',
+                  compact,
+                ),
               ),
             ),
             SliverToBoxAdapter(child: _categoryBar(compact)),
             SliverPadding(
               padding: EdgeInsets.symmetric(
                 horizontal: compact ? 20 : 56,
-                vertical: 12,
+                vertical: 16,
               ),
               sliver: SliverLayoutBuilder(
                 builder: (context, constraints) {
@@ -197,16 +296,16 @@ class _HomePageState extends State<HomePage> {
                     ),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: cols,
-                      crossAxisSpacing: 16,
-                      mainAxisSpacing: 16,
-                      childAspectRatio: cols == 1 ? 1.4 : 0.82,
+                      crossAxisSpacing: 18,
+                      mainAxisSpacing: 18,
+                      childAspectRatio: cols == 1 ? 1.45 : 0.84,
                     ),
                   );
                 },
               ),
             ),
             SliverToBoxAdapter(child: _promo(compact)),
-            SliverToBoxAdapter(child: _footer(compact)),
+            SliverToBoxAdapter(child: _footer(compact, isWideFooter)),
           ],
         ),
       ),
@@ -217,46 +316,98 @@ class _HomePageState extends State<HomePage> {
     padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 18),
     child: Row(
       children: [
-        Container(
-          width: 42,
-          height: 42,
-          decoration: BoxDecoration(
-            color: orange,
-            borderRadius: BorderRadius.circular(13),
-          ),
-          child: const Icon(
-            Icons.restaurant_menu_rounded,
-            color: Colors.white,
-            size: 24,
-          ),
-        ),
-        const SizedBox(width: 10),
-        const Text(
-          'Vanessa\'s Carinderia',
-          style: TextStyle(
-            fontSize: 25,
-            fontWeight: FontWeight.w900,
-            color: ink,
-            letterSpacing: -1,
+        Flexible(
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            child: GestureDetector(
+              onTap: _scrollToTop,
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 42,
+                    height: 42,
+                    decoration: BoxDecoration(
+                      color: orange,
+                      borderRadius: BorderRadius.circular(13),
+                      boxShadow: [
+                        BoxShadow(
+                          color: orange.withValues(alpha: 0.3),
+                          blurRadius: 10,
+                          offset: const Offset(0, 3),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.restaurant_menu_rounded,
+                      color: Colors.white,
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Flexible(
+                    child: Text(
+                      'Vanessa\'s Carinderia',
+                      overflow: TextOverflow.ellipsis,
+                      maxLines: 1,
+                      style: TextStyle(
+                        fontSize: compact ? 19 : 23,
+                        fontWeight: FontWeight.w900,
+                        color: ink,
+                        letterSpacing: -0.6,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ),
         ),
         const Spacer(),
         if (!compact) ...[
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
             child: TextButton(
-              onPressed: () {
-                Navigator.pushNamed(context, '/shop');
-              },
+              onPressed: _scrollToTop,
               child: const Text(
                 'Home',
-                style: TextStyle(color: muted, fontWeight: FontWeight.w600),
+                style: TextStyle(
+                  color: ink,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
               ),
             ),
           ),
-          _navText('Menu'),
-          _navText('About us'),
-          const SizedBox(width: 22),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextButton(
+              onPressed: _scrollToAbout,
+              child: const Text(
+                'About us',
+                style: TextStyle(
+                  color: muted,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: TextButton(
+              onPressed: () => Navigator.pushNamed(context, '/shop'),
+              child: const Text(
+                'Order Online',
+                style: TextStyle(
+                  color: orange,
+                  fontWeight: FontWeight.w700,
+                  fontSize: 14,
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
         ],
         OutlinedButton.icon(
           onPressed: () => Navigator.pushNamed(context, '/login'),
@@ -264,156 +415,234 @@ class _HomePageState extends State<HomePage> {
           label: const Text('Log in'),
           style: OutlinedButton.styleFrom(
             foregroundColor: ink,
-            side: const BorderSide(color: Color(0xFFEADFD6)),
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            side: const BorderSide(color: Color(0xFFDED0C5), width: 1.2),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         ),
       ],
     ),
   );
 
-  Widget _navText(String text) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 14),
-    child: TextButton(
-      onPressed: () {},
-      child: Text(
-        text,
-        style: const TextStyle(color: muted, fontWeight: FontWeight.w600),
-      ),
-    ),
-  );
-
   Widget _hero(bool compact) => Padding(
-    padding: EdgeInsets.fromLTRB(compact ? 12 : 44, 8, compact ? 12 : 44, 10),
+    padding: EdgeInsets.fromLTRB(compact ? 14 : 50, 6, compact ? 14 : 50, 12),
     child: Column(
       children: [
-        SizedBox(
-          height: compact ? 320 : 350,
-          child: PageView.builder(
-            controller: _pageController,
-            itemCount: slides.length,
-            onPageChanged: (i) => setState(() => _activeSlide = i),
-            itemBuilder: (context, i) {
-              final slide = slides[i];
-              return Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(28),
-                  child: Stack(
-                    fit: StackFit.expand,
-                    children: [
-                      Image.asset(
-                        slide.image,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, _, _) =>
-                            Container(color: const Color(0xFFFFD9B8)),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.centerLeft,
-                            end: Alignment.centerRight,
-                            colors: [
-                              Colors.black.withOpacity(.72),
-                              Colors.black.withOpacity(.30),
-                              Colors.transparent,
+        MouseRegion(
+          onEnter: (_) => setState(() => _isHoveringHero = true),
+          onExit: (_) => setState(() => _isHoveringHero = false),
+          child: SizedBox(
+            height: compact ? 330 : 380,
+            child: Stack(
+              children: [
+                ScrollConfiguration(
+                  behavior: const MaterialScrollBehavior().copyWith(
+                    dragDevices: {
+                      PointerDeviceKind.mouse,
+                      PointerDeviceKind.touch,
+                      PointerDeviceKind.stylus,
+                      PointerDeviceKind.trackpad,
+                    },
+                  ),
+                  child: PageView.builder(
+                    controller: _pageController,
+                    itemCount: slides.length,
+                    onPageChanged: (i) => setState(() => _activeSlide = i),
+                    itemBuilder: (context, i) {
+                      final slide = slides[i];
+                      return Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(28),
+                          child: Stack(
+                            fit: StackFit.expand,
+                            children: [
+                              Image.asset(
+                                slide.image,
+                                fit: BoxFit.cover,
+                                errorBuilder: (_, _, _) =>
+                                    Container(color: const Color(0xFFFFE0C2)),
+                              ),
+                              Container(
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.centerLeft,
+                                    end: Alignment.centerRight,
+                                    colors: [
+                                      Colors.black.withValues(alpha: 0.78),
+                                      Colors.black.withValues(alpha: 0.40),
+                                      Colors.black.withValues(alpha: 0.05),
+                                    ],
+                                    stops: const [0.0, 0.55, 1.0],
+                                  ),
+                                ),
+                              ),
+                              Padding(
+                                padding: EdgeInsets.fromLTRB(
+                                  compact ? 24 : 56,
+                                  compact ? 24 : 44,
+                                  compact ? 24 : 120,
+                                  compact ? 24 : 44,
+                                ),
+                                child: Align(
+                                  alignment: Alignment.centerLeft,
+                                  child: ConstrainedBox(
+                                    constraints: const BoxConstraints(
+                                      maxWidth: 520,
+                                    ),
+                                    child: SingleChildScrollView(
+                                      physics: const BouncingScrollPhysics(),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 13,
+                                              vertical: 6,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: orange,
+                                              borderRadius:
+                                                  BorderRadius.circular(30),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: orange.withValues(
+                                                    alpha: 0.4,
+                                                  ),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Text(
+                                              'SARAP NA LUTONG BAHAY',
+                                              style: TextStyle(
+                                                color: Colors.white,
+                                                fontSize: 11,
+                                                fontWeight: FontWeight.w800,
+                                                letterSpacing: 1.1,
+                                              ),
+                                            ),
+                                          ),
+                                          SizedBox(height: compact ? 12 : 18),
+                                          Text(
+                                            slide.title.replaceAll('\\n', '\n'),
+                                            style: TextStyle(
+                                              color: Colors.white,
+                                              fontSize: compact ? 30 : 48,
+                                              height: 1.1,
+                                              fontWeight: FontWeight.w900,
+                                              letterSpacing: -1.2,
+                                              shadows: const [
+                                                Shadow(
+                                                  color: Colors.black45,
+                                                  blurRadius: 10,
+                                                  offset: Offset(0, 2),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          SizedBox(height: compact ? 10 : 14),
+                                          Text(
+                                            slide.subtitle,
+                                            style: TextStyle(
+                                              color: Colors.white.withValues(
+                                                alpha: 0.92,
+                                              ),
+                                              fontSize: compact ? 13 : 16,
+                                              height: 1.45,
+                                            ),
+                                          ),
+                                          SizedBox(height: compact ? 18 : 26),
+                                          FilledButton.icon(
+                                            onPressed: _scrollToMenu,
+                                            icon: const Icon(
+                                              Icons.arrow_forward_rounded,
+                                              size: 18,
+                                            ),
+                                            label: const Text(
+                                              'Order now',
+                                              style: TextStyle(
+                                                fontWeight: FontWeight.w800,
+                                                fontSize: 14,
+                                              ),
+                                            ),
+                                            style: FilledButton.styleFrom(
+                                              backgroundColor: orange,
+                                              foregroundColor: Colors.white,
+                                              padding: EdgeInsets.symmetric(
+                                                horizontal: compact ? 22 : 28,
+                                                vertical: compact ? 14 : 18,
+                                              ),
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                              elevation: 4,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ),
                             ],
                           ),
                         ),
-                      ),
-                      Padding(
-                        padding: EdgeInsets.fromLTRB(
-                          compact ? 20 : 56,
-                          compact ? 20 : 40,
-                          compact ? 70 : 120,
-                          compact ? 20 : 40,
-                        ),
-                        child: Align(
-                          alignment: Alignment.centerLeft,
-                          child: ConstrainedBox(
-                            constraints: const BoxConstraints(maxWidth: 510),
-                            child: SingleChildScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 6,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: orange,
-                                      borderRadius: BorderRadius.circular(30),
-                                    ),
-                                    child: const Text(
-                                      'SARAP NA LUTONG BAHAY',
-                                      style: TextStyle(
-                                        color: Colors.white,
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.bold,
-                                        letterSpacing: 1,
-                                      ),
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 10 : 18),
-                                  Text(
-                                    slide.title.replaceAll('\\n', '\n'),
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontSize: compact ? 28 : 52,
-                                      height: 1.08,
-                                      fontWeight: FontWeight.w900,
-                                      letterSpacing: -1.2,
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 8 : 14),
-                                  Text(
-                                    slide.subtitle,
-                                    style: TextStyle(
-                                      color: Colors.white.withOpacity(.9),
-                                      fontSize: compact ? 13 : 16,
-                                      height: 1.4,
-                                    ),
-                                  ),
-                                  SizedBox(height: compact ? 16 : 24),
-                                  FilledButton(
-                                    onPressed: () => Scrollable.ensureVisible(
-                                      context,
-                                      duration: const Duration(milliseconds: 400),
-                                    ),
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: orange,
-                                      foregroundColor: Colors.white,
-                                      padding: EdgeInsets.symmetric(
-                                        horizontal: compact ? 18 : 23,
-                                        vertical: compact ? 12 : 16,
-                                      ),
-                                    ),
-                                    child: const Text(
-                                      'Order now  →',
-                                      style: TextStyle(
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      Positioned(
-                        right: compact ? 16 : 28,
-                        bottom: compact ? 16 : 28,
-                        child: _singleNavControl(compact),
-                      ),
-                    ],
+                      );
+                    },
                   ),
                 ),
-              );
-            },
+
+                if (!compact) ...[
+                  Positioned(
+                    left: 18,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _carouselChevron(
+                        icon: Icons.chevron_left_rounded,
+                        tooltip: 'Previous slide',
+                        onTap: () {
+                          final prev =
+                              (_activeSlide - 1 + slides.length) %
+                              slides.length;
+                          _pageController.animateToPage(
+                            prev,
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    right: 18,
+                    top: 0,
+                    bottom: 0,
+                    child: Center(
+                      child: _carouselChevron(
+                        icon: Icons.chevron_right_rounded,
+                        tooltip: 'Next slide',
+                        onTap: () {
+                          final next = (_activeSlide + 1) % slides.length;
+                          _pageController.animateToPage(
+                            next,
+                            duration: const Duration(milliseconds: 400),
+                            curve: Curves.easeOutCubic,
+                          );
+                        },
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
         const SizedBox(height: 16),
@@ -421,20 +650,32 @@ class _HomePageState extends State<HomePage> {
           mainAxisAlignment: MainAxisAlignment.center,
           children: List.generate(
             slides.length,
-            (i) => GestureDetector(
-              onTap: () => _pageController.animateToPage(
-                i,
-                duration: const Duration(milliseconds: 350),
-                curve: Curves.easeOut,
-              ),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                margin: const EdgeInsets.symmetric(horizontal: 4),
-                width: _activeSlide == i ? 27 : 8,
-                height: 8,
-                decoration: BoxDecoration(
-                  color: _activeSlide == i ? orange : const Color(0xFFE8D6C8),
-                  borderRadius: BorderRadius.circular(20),
+            (i) => MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: GestureDetector(
+                onTap: () => _pageController.animateToPage(
+                  i,
+                  duration: const Duration(milliseconds: 400),
+                  curve: Curves.easeOutCubic,
+                ),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 5,
+                    vertical: 6,
+                  ),
+                  color: Colors.transparent,
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeInOut,
+                    width: _activeSlide == i ? 28 : 9,
+                    height: 9,
+                    decoration: BoxDecoration(
+                      color: _activeSlide == i
+                          ? orange
+                          : const Color(0xFFDCCBC0),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -444,116 +685,53 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
-  Widget _singleNavControl(bool compact) {
-    return Container(
-      decoration: BoxDecoration(
-        color: Colors.black.withOpacity(0.55),
-        borderRadius: BorderRadius.circular(30),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 1),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.25),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+  Widget _carouselChevron({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onTap,
+  }) {
+    return AnimatedOpacity(
+      duration: const Duration(milliseconds: 200),
+      opacity: _isHoveringHero ? 0.95 : 0.4,
+      child: Tooltip(
+        message: tooltip,
+        child: Material(
+          color: Colors.black.withValues(alpha: 0.45),
+          shape: const CircleBorder(),
+          child: InkWell(
+            onTap: onTap,
+            customBorder: const CircleBorder(),
+            child: Padding(
+              padding: const EdgeInsets.all(10),
+              child: Icon(icon, color: Colors.white, size: 26),
+            ),
           ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            IconButton(
-              onPressed: () {
-                if (_pageController.hasClients) {
-                  if (_activeSlide > 0) {
-                    _pageController.previousPage(
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOut,
-                    );
-                  } else {
-                    _pageController.animateToPage(
-                      slides.length - 1,
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                }
-              },
-              icon: const Icon(
-                Icons.chevron_left_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-              tooltip: 'Previous',
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              padding: EdgeInsets.zero,
-            ),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 4),
-              child: Text(
-                '${_activeSlide + 1} / ${slides.length}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 12,
-                  letterSpacing: 0.5,
-                ),
-              ),
-            ),
-            IconButton(
-              onPressed: () {
-                if (_pageController.hasClients) {
-                  if (_activeSlide < slides.length - 1) {
-                    _pageController.nextPage(
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOut,
-                    );
-                  } else {
-                    _pageController.animateToPage(
-                      0,
-                      duration: const Duration(milliseconds: 350),
-                      curve: Curves.easeOut,
-                    );
-                  }
-                }
-              },
-              icon: const Icon(
-                Icons.chevron_right_rounded,
-                color: Colors.white,
-                size: 22,
-              ),
-              tooltip: 'Next',
-              constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
-              padding: EdgeInsets.zero,
-            ),
-          ],
         ),
       ),
     );
   }
 
   Widget _benefits(bool compact) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 22),
+    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 24),
     child: Wrap(
       alignment: WrapAlignment.spaceAround,
-      runSpacing: 14,
-      spacing: 16,
+      runSpacing: 18,
+      spacing: 20,
       children: const [
         _Benefit(
-          Icons.soup_kitchen_outlined,
-          'Freshly cooked',
-          'Made with care every day',
+          Icons.soup_kitchen_rounded,
+          'Lutong Bahay Araw-Araw',
+          'Freshly prepared with home-style love',
         ),
         _Benefit(
-          Icons.delivery_dining_outlined,
-          'Quick delivery',
-          'Good food, right at your door',
+          Icons.delivery_dining_rounded,
+          'Mabilis na Delivery',
+          'Hot and warm meals at your doorstep',
         ),
         _Benefit(
-          Icons.payments_outlined,
-          'Presyong sulit',
-          'Everyday meals, fair prices',
+          Icons.savings_rounded,
+          'Sulit sa Presyo',
+          'Generous servings, abot-kayang halaga',
         ),
       ],
     ),
@@ -563,9 +741,9 @@ class _HomePageState extends State<HomePage> {
       Padding(
         padding: EdgeInsets.fromLTRB(
           compact ? 20 : 56,
-          16,
+          24,
           compact ? 20 : 56,
-          8,
+          10,
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -573,27 +751,34 @@ class _HomePageState extends State<HomePage> {
             Text(
               title,
               style: TextStyle(
-                fontSize: compact ? 20 : 26,
+                fontSize: compact ? 22 : 28,
                 fontWeight: FontWeight.w900,
                 color: ink,
-                letterSpacing: -.5,
+                letterSpacing: -0.6,
               ),
             ),
-            const SizedBox(height: 4),
-            Text(subtitle, style: const TextStyle(color: muted, fontSize: 13)),
+            const SizedBox(height: 5),
+            Text(
+              subtitle,
+              style: const TextStyle(
+                color: muted,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ],
         ),
       );
 
   Widget _categoryBar(bool compact) => SizedBox(
-    height: 44,
+    height: 46,
     child: ListView(
       scrollDirection: Axis.horizontal,
       padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56),
       children: List.generate(
         categories.length,
         (i) => Padding(
-          padding: const EdgeInsets.only(right: 7),
+          padding: const EdgeInsets.only(right: 8),
           child: ChoiceChip(
             label: Text(categories[i]),
             selected: _activeCategory == i,
@@ -602,120 +787,203 @@ class _HomePageState extends State<HomePage> {
             backgroundColor: cream,
             labelStyle: TextStyle(
               color: _activeCategory == i ? Colors.white : ink,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
+              fontWeight: FontWeight.w700,
+              fontSize: 13,
             ),
-            side: BorderSide.none,
+            side: BorderSide(
+              color: _activeCategory == i ? orange : const Color(0xFFEADBCE),
+              width: 1,
+            ),
             showCheckmark: false,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(24),
+            ),
           ),
         ),
       ),
     ),
   );
 
-  Widget _foodCard(FoodItem food, bool compact) => Container(
-    decoration: BoxDecoration(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(16),
-      border: Border.all(color: const Color(0xFFF0E7E0)),
-      boxShadow: [
-        BoxShadow(
-          color: ink.withOpacity(.04),
-          blurRadius: 12,
-          offset: const Offset(0, 4),
-        ),
-      ],
-    ),
-    clipBehavior: Clip.antiAlias,
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Expanded(
-          flex: 55,
-          child: Image.network(
-            food.image,
-            width: double.infinity,
-            fit: BoxFit.cover,
-            errorBuilder: (_, _, _) => Container(
-              color: cream,
-              child: const Icon(Icons.restaurant, color: orange, size: 32),
+  Widget _foodCard(FoodItem food, bool compact) => MouseRegion(
+    cursor: SystemMouseCursors.click,
+    child: InkWell(
+      onTap: () => Navigator.pushNamed(context, '/shop'),
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(color: const Color(0xFFEFE6DF), width: 1.2),
+          boxShadow: [
+            BoxShadow(
+              color: ink.withValues(alpha: 0.04),
+              blurRadius: 14,
+              offset: const Offset(0, 5),
             ),
-          ),
+          ],
         ),
-        Expanded(
-          flex: 45,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
+        clipBehavior: Clip.antiAlias,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Expanded(
+              flex: 56,
+              child: Stack(
+                fit: StackFit.expand,
+                children: [
+                  food.image.startsWith('http')
+                      ? Image.network(
+                          food.image,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            color: cream,
+                            child: const Icon(
+                              Icons.restaurant_rounded,
+                              color: orange,
+                              size: 34,
+                            ),
+                          ),
+                        )
+                      : Image.asset(
+                          food.image,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (_, _, _) => Container(
+                            color: cream,
+                            child: const Icon(
+                              Icons.restaurant_rounded,
+                              color: orange,
+                              size: 34,
+                            ),
+                          ),
+                        ),
+                  Positioned(
+                    top: 10,
+                    right: 10,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.65),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        food.category,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Expanded(
+              flex: 44,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 12,
+                ),
+                child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      food.name,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: ink,
-                      ),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          food.name,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 15,
+                            color: ink,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          food.description,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(
+                            color: muted,
+                            fontSize: 12,
+                            height: 1.25,
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 3),
-                    Text(
-                      food.description,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(
-                        color: muted,
-                        fontSize: 11,
-                        height: 1.2,
-                      ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
+                      children: [
+                        Text(
+                          food.price,
+                          style: const TextStyle(
+                            color: deepOrange,
+                            fontWeight: FontWeight.w900,
+                            fontSize: 18,
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 5,
+                          ),
+                          decoration: BoxDecoration(
+                            color: cream,
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: orange.withValues(alpha: 0.3),
+                              width: 1,
+                            ),
+                          ),
+                          child: const Text(
+                            'Order Now',
+                            style: TextStyle(
+                              color: deepOrange,
+                              fontWeight: FontWeight.w800,
+                              fontSize: 11,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
-                Row(
-                  children: [
-                    Text(
-                      food.price,
-                      style: const TextStyle(
-                        color: deepOrange,
-                        fontWeight: FontWeight.w900,
-                        fontSize: 16,
-                      ),
-                    ),
-                    const Spacer(),
-                    IconButton.filled(
-                      onPressed: () {},
-                      icon: const Icon(Icons.add, size: 16),
-                      style: IconButton.styleFrom(
-                        backgroundColor: orange,
-                        foregroundColor: Colors.white,
-                        minimumSize: const Size(32, 32),
-                        padding: EdgeInsets.zero,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+              ),
             ),
-          ),
+          ],
         ),
-      ],
+      ),
     ),
   );
 
   Widget _promo(bool compact) => Padding(
-    padding: EdgeInsets.fromLTRB(compact ? 20 : 56, 30, compact ? 20 : 56, 36),
+    padding: EdgeInsets.fromLTRB(compact ? 20 : 56, 32, compact ? 20 : 56, 40),
     child: Container(
-      padding: EdgeInsets.all(compact ? 20 : 32),
+      padding: EdgeInsets.all(compact ? 24 : 36),
       decoration: BoxDecoration(
         color: cream,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: const Color(0xFFF0DFCE), width: 1.2),
+        boxShadow: [
+          BoxShadow(
+            color: ink.withValues(alpha: 0.04),
+            blurRadius: 16,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
       child: Row(
         children: [
@@ -723,71 +991,375 @@ class _HomePageState extends State<HomePage> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text(
-                  'May cravings ka?',
-                  style: TextStyle(color: orange, fontWeight: FontWeight.bold, fontSize: 13),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  'Your next comfort meal is just a few taps away.',
-                  style: TextStyle(
-                    color: ink,
-                    fontSize: compact ? 18 : 24,
-                    fontWeight: FontWeight.w900,
-                    height: 1.15,
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: orange.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'GUTOM KA NA BA?',
+                    style: TextStyle(
+                      color: deepOrange,
+                      fontWeight: FontWeight.w800,
+                      fontSize: 11,
+                      letterSpacing: 0.8,
+                    ),
                   ),
                 ),
-                const SizedBox(height: 14),
-                FilledButton(
-                  onPressed: () {},
+                const SizedBox(height: 10),
+                Text(
+                  'Your next favorite comfort meal is just a few taps away.',
+                  style: TextStyle(
+                    color: ink,
+                    fontSize: compact ? 20 : 26,
+                    fontWeight: FontWeight.w900,
+                    height: 1.2,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Freshly cooked dishes prepared daily. Order directly online for fast delivery or store pickup.',
+                  style: TextStyle(color: muted, fontSize: 13, height: 1.4),
+                ),
+                const SizedBox(height: 18),
+                FilledButton.icon(
+                  onPressed: () => Navigator.pushNamed(context, '/shop'),
+                  icon: const Icon(Icons.restaurant_menu_rounded, size: 18),
+                  label: const Text(
+                    'Explore the full menu',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w800),
+                  ),
                   style: FilledButton.styleFrom(
                     backgroundColor: orange,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(
-                      horizontal: 18,
-                      vertical: 12,
+                      horizontal: 22,
+                      vertical: 15,
                     ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 2,
                   ),
-                  child: const Text('Explore the menu', style: TextStyle(fontSize: 13)),
                 ),
               ],
             ),
           ),
-          if (!compact) const SizedBox(width: 20),
-          if (!compact)
-            const Icon(
-              Icons.ramen_dining_rounded,
-              color: Color(0xFFFFC28D),
-              size: 80,
+          if (!compact) ...[
+            const SizedBox(width: 32),
+            Container(
+              width: 120,
+              height: 120,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: orange.withValues(alpha: 0.15),
+                    blurRadius: 18,
+                    offset: const Offset(0, 6),
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.outdoor_grill_rounded,
+                color: orange,
+                size: 64,
+              ),
             ),
+          ],
         ],
       ),
     ),
   );
 
-  Widget _footer(bool compact) => Container(
+  Widget _footer(bool compact, bool isWide) => Container(
     color: ink,
-    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 20),
-    child: Row(
+    padding: EdgeInsets.symmetric(
+      horizontal: compact ? 20 : (isWide ? 56 : 28),
+      vertical: compact ? 32 : 44,
+    ),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Vanessa\'s Carinderia',
-          style: TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.w900,
-            fontSize: 18,
+        if (!isWide) ...[
+          Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: orange,
+                  borderRadius: BorderRadius.circular(11),
+                ),
+                child: const Icon(
+                  Icons.restaurant_menu_rounded,
+                  color: Colors.white,
+                  size: 22,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "Vanessa's Carinderia",
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 20,
+                    letterSpacing: -0.5,
+                  ),
+                ),
+              ),
+            ],
           ),
-        ),
-        const Spacer(),
-        const Flexible(
-          child: Text(
-            'Lutong bahay, delivered with love.  © 2026 Vanessa\'s Carinderia',
-            textAlign: TextAlign.right,
-            style: TextStyle(color: Color(0xFFD9CEC6), fontSize: 11),
+          const SizedBox(height: 12),
+          const Text(
+            'Ang paboritong lutong bahay sa kapitbahayan. Fresh, mainit, at masarap na putahe araw-araw.',
+            style: TextStyle(color: Color(0xFFD0C3B8), fontSize: 13, height: 1.4),
           ),
+          const SizedBox(height: 20),
+          _footerInfoBlock(
+            Icons.access_time_rounded,
+            'Serving Hours',
+            '8:00 AM – 8:00 PM Daily (Lunch ready by 10:30 AM)',
+          ),
+          const SizedBox(height: 10),
+          _footerInfoBlock(
+            Icons.location_on_rounded,
+            'Location & Area',
+            "Governor's Drive, Dasmariñas, Cavite • Dine-in & Delivery",
+          ),
+          const SizedBox(height: 16),
+          _paymentBadges(),
+        ] else ...[
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: BoxDecoration(
+                            color: orange,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: const Icon(
+                            Icons.restaurant_menu_rounded,
+                            color: Colors.white,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text(
+                            "Vanessa's Carinderia",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w900,
+                              fontSize: 22,
+                              letterSpacing: -0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Text(
+                      "Ang paboritong lutong bahay sa kapitbahayan.\nFresh, mainit, at masarap na putahe araw-araw para sa buong pamilya.",
+                      style: TextStyle(
+                        color: Color(0xFFD0C3B8),
+                        fontSize: 13,
+                        height: 1.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 36),
+              Expanded(
+                flex: 4,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _footerInfoBlock(
+                      Icons.access_time_rounded,
+                      'Operating Hours',
+                      "8:00 AM – 8:00 PM Daily\nLunch specials hot by 10:30 AM",
+                    ),
+                    const SizedBox(height: 14),
+                    _footerInfoBlock(
+                      Icons.location_on_rounded,
+                      'Location & Service',
+                      "Dasmariñas, Cavite\nDine-in, Takeout & Express Delivery",
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 28),
+              Expanded(
+                flex: 3,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Accepted Payments',
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 14,
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    _paymentBadges(),
+                    const SizedBox(height: 16),
+                    TextButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/shop'),
+                      icon: const Icon(
+                        Icons.shopping_bag_outlined,
+                        size: 16,
+                        color: orange,
+                      ),
+                      label: const Text(
+                        'Start ordering now →',
+                        style: TextStyle(
+                          color: orange,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      style: TextButton.styleFrom(
+                        padding: EdgeInsets.zero,
+                        alignment: Alignment.centerLeft,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+        const Divider(color: Color(0xFF453A34), height: 36),
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 16,
+          runSpacing: 8,
+          children: const [
+            Text(
+              "© 2026 Vanessa's Carinderia. All rights reserved.",
+              style: TextStyle(color: Color(0xFFAFA39A), fontSize: 12),
+            ),
+            Text(
+              'Lutong bahay na abot-kaya.',
+              style: TextStyle(color: Color(0xFFAFA39A), fontSize: 12),
+            ),
+          ],
         ),
       ],
     ),
+  );
+
+  Widget _footerInfoBlock(IconData icon, String title, String body) => Row(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Icon(icon, color: orange, size: 18),
+      const SizedBox(width: 8),
+      Expanded(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              body,
+              style: const TextStyle(
+                color: Color(0xFFD0C3B8),
+                fontSize: 12,
+                height: 1.35,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
+  );
+
+  Widget _paymentBadges() => Wrap(
+    spacing: 8,
+    runSpacing: 6,
+    children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF007DFE).withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFF007DFE).withValues(alpha: 0.4),
+          ),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.qr_code_rounded, color: Color(0xFF3897FF), size: 14),
+            SizedBox(width: 5),
+            Text(
+              'GCash QR',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color: const Color(0xFF22C55E).withValues(alpha: 0.18),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(
+            color: const Color(0xFF22C55E).withValues(alpha: 0.4),
+          ),
+        ),
+        child: const Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.payments_rounded, color: Color(0xFF4ADE80), size: 14),
+            SizedBox(width: 5),
+            Text(
+              'Cash on Delivery',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      ),
+    ],
   );
 }
 
@@ -802,31 +1374,36 @@ class _Benefit extends StatelessWidget {
   const _Benefit(this.icon, this.title, this.subtitle);
   @override
   Widget build(BuildContext context) => SizedBox(
-    width: 200,
+    width: 220,
     child: Row(
       children: [
         Container(
-          width: 38,
-          height: 38,
+          width: 44,
+          height: 44,
           decoration: BoxDecoration(
             color: cream,
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(color: const Color(0xFFF1E3D7), width: 1),
           ),
-          child: Icon(icon, color: orange, size: 20),
+          child: Icon(icon, color: orange, size: 22),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
                 title,
-                style: const TextStyle(color: ink, fontWeight: FontWeight.bold, fontSize: 13),
+                style: const TextStyle(
+                  color: ink,
+                  fontWeight: FontWeight.w800,
+                  fontSize: 13,
+                ),
               ),
               const SizedBox(height: 2),
               Text(
                 subtitle,
-                style: const TextStyle(color: muted, fontSize: 11),
+                style: const TextStyle(color: muted, fontSize: 11, height: 1.2),
               ),
             ],
           ),

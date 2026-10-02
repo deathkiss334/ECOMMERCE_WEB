@@ -125,7 +125,7 @@ class _SignupPageState extends State<SignupPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   const Text(
-                    'Join DasmaBITES',
+                    "Join Vanessa's Carinderia",
                     style: TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
                     textAlign: TextAlign.center,
                   ),
