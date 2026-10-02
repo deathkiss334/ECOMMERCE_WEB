@@ -2,6 +2,7 @@ class ProductTableModel {
   final String productId;
   final int productQuantity;
   final String productType;
+  final String productDescription;
   final double productPrice;
   final String productImage;
 
@@ -9,6 +10,7 @@ class ProductTableModel {
     required this.productId,
     required this.productQuantity,
     required this.productType,
+    this.productDescription = '',
     required this.productPrice,
     this.productImage = '',
   });
@@ -21,6 +23,7 @@ class ProductTableModel {
           ? json['product_quantity']
           : int.tryParse(json['product_quantity']?.toString() ?? '0') ?? 0,
       productType: json['product_type']?.toString() ?? '',
+        productDescription: json['product_description']?.toString() ?? '',
       productPrice: json['product_price'] is double
           ? json['product_price']
           : double.tryParse(json['product_price']?.toString() ?? '0.0') ?? 0.0,
@@ -34,6 +37,7 @@ class ProductTableModel {
       'product_id': productId,
       'product_quantity': productQuantity,
       'product_type': productType,
+      'product_description': productDescription,
       'product_price': productPrice,
       'product_image': productImage,
     };
@@ -53,6 +57,7 @@ class ProductTableModel {
               ? int.tryParse(fields['product_quantity']['stringValue']) ?? 0
               : 0),
       productType: fields['product_type']?['stringValue'] ?? '',
+      productDescription: fields['product_description']?['stringValue'] ?? '',
       productPrice: fields['product_price']?['doubleValue'] != null
           ? (fields['product_price']['doubleValue'] as num).toDouble()
           : (fields['product_price']?['integerValue'] != null
@@ -69,6 +74,7 @@ class ProductTableModel {
         'product_id': {'stringValue': productId},
         'product_quantity': {'integerValue': productQuantity},
         'product_type': {'stringValue': productType},
+        'product_description': {'stringValue': productDescription},
         'product_price': {'doubleValue': productPrice},
         'product_image': {'stringValue': productImage},
       }

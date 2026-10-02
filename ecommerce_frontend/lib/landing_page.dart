@@ -143,7 +143,7 @@ class _HomePageState extends State<HomePage> {
       product.name,
       product.description,
       '₱${product.basePrice.toStringAsFixed(0)}',
-      'assets/assets1.jpg',
+      product.image.isNotEmpty ? product.image : 'assets/assets1.jpg',
       category,
     );
   }

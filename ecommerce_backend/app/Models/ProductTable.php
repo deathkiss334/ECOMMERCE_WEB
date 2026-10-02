@@ -18,6 +18,7 @@ class ProductTable extends Model
         'product_id',
         'product_quantity',
         'product_type',
+        'product_description',
         'product_price',
         'product_image',
     ];

@@ -3,6 +3,7 @@ class Product {
   final String name;
   final String slug;
   final String description;
+  final String image;
   final double basePrice;
   final double ratingAvg;
   final int totalReviews;
@@ -13,6 +14,7 @@ class Product {
     required this.name,
     required this.slug,
     required this.description,
+    this.image = '',
     required this.basePrice,
     required this.ratingAvg,
     required this.totalReviews,
@@ -26,6 +28,7 @@ class Product {
       name: json['name'],
       slug: json['slug'],
       description: json['description'] ?? '',
+      image: json['product_image']?.toString() ?? '',
       basePrice: double.parse(json['base_price'].toString()),
       ratingAvg: double.parse(json['rating_avg'].toString()),
       totalReviews: json['total_reviews'] ?? 0,

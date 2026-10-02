@@ -110,6 +110,9 @@ class _ProductsViewState extends State<ProductsView> {
     final typeCtrl = TextEditingController(
       text: isEditing ? existingProduct.productType : 'Filipino',
     );
+    final descriptionCtrl = TextEditingController(
+      text: isEditing ? existingProduct.productDescription : '',
+    );
     final quantityCtrl = TextEditingController(
       text: isEditing ? existingProduct.productQuantity.toString() : '50',
     );
@@ -204,6 +207,18 @@ class _ProductsViewState extends State<ProductsView> {
                           labelText: 'Product Type / Category (product_type)',
                           border: OutlineInputBorder(),
                           prefixIcon: Icon(Icons.category),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      TextField(
+                        controller: descriptionCtrl,
+                        maxLines: 3,
+                        decoration: const InputDecoration(
+                          labelText: 'Product Description (product_description)',
+                          border: OutlineInputBorder(),
+                          prefixIcon: Icon(Icons.description_outlined),
+                          alignLabelWithHint: true,
                         ),
                       ),
                       const SizedBox(height: 14),
@@ -392,6 +407,7 @@ class _ProductsViewState extends State<ProductsView> {
                       ? null
                       : () async {
                           final productType = typeCtrl.text.trim();
+                          final productDescription = descriptionCtrl.text.trim();
                           final quantity =
                               int.tryParse(quantityCtrl.text.trim()) ?? 0;
                           final price =
@@ -413,6 +429,7 @@ class _ProductsViewState extends State<ProductsView> {
                             productId: isEditing ? existingProduct.productId : '',
                             productQuantity: quantity,
                             productType: productType,
+                            productDescription: productDescription,
                             productPrice: price,
                             productImage: imageUrl,
                           );

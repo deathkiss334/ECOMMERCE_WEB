@@ -47,6 +47,7 @@ class ProductTableController extends Controller
             'product_id' => 'required|string|max:100',
             'product_quantity' => 'required|integer|min:0',
             'product_type' => 'required|string|max:100',
+            'product_description' => 'nullable|string',
             'product_price' => 'required|numeric|min:0',
             'product_image' => 'nullable|string',
         ]);
@@ -74,6 +75,7 @@ class ProductTableController extends Controller
         $validated = $request->validate([
             'product_quantity' => 'sometimes|integer|min:0',
             'product_type' => 'sometimes|string|max:100',
+            'product_description' => 'nullable|string',
             'product_price' => 'sometimes|numeric|min:0',
             'product_image' => 'nullable|string',
         ]);
@@ -110,7 +112,7 @@ class ProductTableController extends Controller
             'product_id' => (string) $product->product_id,
             'name' => $product->product_type,
             'slug' => \Illuminate\Support\Str::slug($product->product_type) . '-' . $product->product_id,
-            'description' => $product->product_type,
+            'description' => $product->product_description ?? '',
             'base_price' => (float) $product->product_price,
             'rating_avg' => 0,
             'total_reviews' => 0,

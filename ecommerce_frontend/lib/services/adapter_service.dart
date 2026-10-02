@@ -12,7 +12,7 @@ class AdapterService {
       'sold': product.totalReviews * 4, // Simulated sales numbers for UI metrics
       'badge': product.id <= 2 ? 'BESTSELLER' : '', // Top 2 get badge
       'category': _mapCategory(product.slug),
-      'image': 'assets/food1.jpg', // Placeholder until S3/Local Storage images
+      'image': product.image.isNotEmpty ? product.image : 'assets/food1.jpg',
       'description': product.description,
     };
   }
