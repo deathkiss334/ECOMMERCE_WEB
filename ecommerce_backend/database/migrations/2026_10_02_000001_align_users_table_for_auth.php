@@ -43,6 +43,9 @@ return new class extends Migration
 
         $pwdColumn = $hasPassword ? 'password' : 'password_hash';
         $googleColumn = Schema::hasColumn('users', 'google_id') ? 'google_id' : 'NULL';
+        $roleExpr = Schema::hasColumn('users', 'role') 
+            ? "CASE WHEN role = 'admin' THEN 'admin' ELSE 'customer' END" 
+            : "'customer'";
 
         DB::statement("
             INSERT INTO users_temp (id, email, password_hash, name, phone, role, auth_provider, google_id, created_at, updated_at)
@@ -52,7 +55,7 @@ return new class extends Migration
                 {$pwdColumn}, 
                 name, 
                 NULL, 
-                CASE WHEN role = 'admin' THEN 'admin' ELSE 'customer' END, 
+                {$roleExpr}, 
                 CASE WHEN {$googleColumn} IS NOT NULL AND {$googleColumn} != '' THEN 'google' ELSE 'local' END, 
                 {$googleColumn}, 
                 COALESCE(created_at, CURRENT_TIMESTAMP), 

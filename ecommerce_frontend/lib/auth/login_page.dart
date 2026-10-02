@@ -177,7 +177,7 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Log in with your SQLite account or Google',
+                    'Log in with your exisiting account or Google sign in',
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
