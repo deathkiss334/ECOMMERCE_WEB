@@ -13,6 +13,7 @@ class Payment extends Model
     protected $keyType = 'string';
 
     protected $fillable = [
+        'payment_id',
         'id',
         'order_id',
         'payment_method',
@@ -22,9 +23,6 @@ class Payment extends Model
         'currency',
         'status',
         'metadata',
-
-        // Compatibility fields
-        'payment_id',
         'transaction_id',
         'payment_status',
     ];
@@ -32,29 +30,31 @@ class Payment extends Model
     protected static function booted()
     {
         static::creating(function ($payment) {
-            if (empty($payment->payment_id)) {
-                $payment->payment_id = !empty($payment->id) ? (string) $payment->id : (string) Str::uuid();
+            if (empty($payment->payment_id) && empty($payment->id)) {
+                $payment->payment_id = (string) Str::uuid();
             }
         });
     }
 
     public function getIdAttribute()
     {
-        return $this->attributes['payment_id'] ?? null;
+        return $this->attributes['payment_id'] ?? $this->attributes['id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
         $this->attributes['payment_id'] = $value;
+        $this->attributes['id'] = $value;
     }
 
     public function getPaymentIdAttribute()
     {
-        return $this->attributes['payment_id'] ?? null;
+        return $this->attributes['payment_id'] ?? $this->attributes['id'] ?? null;
     }
 
     public function setPaymentIdAttribute($value)
     {
+        $this->attributes['payment_id'] = $value;
         $this->attributes['payment_id'] = $value;
     }
 

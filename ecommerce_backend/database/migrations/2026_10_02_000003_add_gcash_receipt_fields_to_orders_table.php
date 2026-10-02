@@ -13,16 +13,16 @@ return new class extends Migration
     {
         Schema::table('orders', function (Blueprint $table) {
             if (!Schema::hasColumn('orders', 'gcash_ref_number')) {
-                $table->string('gcash_ref_number')->nullable()->after('payment_status');
+                $table->string('gcash_ref_number')->nullable();
             }
             if (!Schema::hasColumn('orders', 'receipt_image_url')) {
-                $table->string('receipt_image_url')->nullable()->after('gcash_ref_number');
+                $table->string('receipt_image_url')->nullable();
             }
             if (!Schema::hasColumn('orders', 'admin_notes')) {
-                $table->text('admin_notes')->nullable()->after('receipt_image_url');
+                $table->text('admin_notes')->nullable();
             }
             if (!Schema::hasColumn('orders', 'verified_at')) {
-                $table->timestamp('verified_at')->nullable()->after('admin_notes');
+                $table->timestamp('verified_at')->nullable();
             }
         });
     }

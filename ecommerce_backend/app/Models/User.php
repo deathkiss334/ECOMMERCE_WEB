@@ -13,10 +13,8 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'users_table';
-    protected $primaryKey = 'email_address';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $table = 'users';
+    protected $primaryKey = 'user_id';
 
     protected $fillable = [
         'email_address',

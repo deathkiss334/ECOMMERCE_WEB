@@ -1,0 +1,8 @@
+#!/bin/bash
+# Wrapper script to run PHP artisan commands with PostgreSQL + intl extensions loaded
+# Uses a local php.ini that has pdo_pgsql, pgsql, and intl extensions enabled.
+
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PHP_INI="$SCRIPT_DIR/php.ini"
+
+exec php -c "$PHP_INI" artisan "$@"
