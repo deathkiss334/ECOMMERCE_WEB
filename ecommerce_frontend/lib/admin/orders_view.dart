@@ -1031,7 +1031,10 @@ class _OrdersViewState extends State<OrdersView> {
       ),
       color: Colors.white,
       child: InkWell(
-        onTap: () => _openChat(order),
+        onTap: () {
+          _markAsRead(order);
+          setState(() => _selectedOrderId = order.orderNumber);
+        },
         borderRadius: BorderRadius.circular(12),
         child: Padding(
           padding: const EdgeInsets.all(20),

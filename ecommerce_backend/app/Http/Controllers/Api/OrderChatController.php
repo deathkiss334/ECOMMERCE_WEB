@@ -14,11 +14,20 @@ class OrderChatController extends Controller
      */
     public function index($orderId)
     {
-        $order = OrderService::findOrder((string) $orderId);
-        $orderKey = $order ? $order['order_number'] : $orderId;
+        $cleanId = trim((string) $orderId);
+        $order = OrderService::findOrder($cleanId);
+        $orderKey = $order ? $order['order_number'] : $cleanId;
 
+        if (empty($orderKey)) {
+            return response()->json([
+                'success' => true,
+                'order_id' => '',
+                'messages' => [],
+            ]);
+        }
+
+        // Strictly lock messages to this exact specific order_number only
         $messages = OrderChat::where('order_id', $orderKey)
-            ->orWhere('order_id', (string) $orderId)
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -40,8 +49,13 @@ class OrderChatController extends Controller
             'message' => 'required|string|max:2000',
         ]);
 
-        $order = OrderService::findOrder((string) $orderId);
-        $orderKey = $order ? $order['order_number'] : $orderId;
+        $cleanId = trim((string) $orderId);
+        $order = OrderService::findOrder($cleanId);
+        $orderKey = $order ? $order['order_number'] : $cleanId;
+
+        if (empty($orderKey)) {
+            return response()->json(['message' => 'Invalid order identifier for chat'], 400);
+        }
 
         $chat = OrderChat::create([
             'order_id' => $orderKey,

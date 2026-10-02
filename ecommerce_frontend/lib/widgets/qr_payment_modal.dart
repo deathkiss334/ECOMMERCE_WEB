@@ -13,6 +13,7 @@ class QrPaymentModal extends StatefulWidget {
   final String? orderType;
   final double? subtotal;
   final double? deliveryFee;
+  final String? customerName;
   final VoidCallback onPaymentComplete;
 
   const QrPaymentModal({
@@ -23,6 +24,7 @@ class QrPaymentModal extends StatefulWidget {
     this.orderType,
     this.subtotal,
     this.deliveryFee,
+    this.customerName,
     required this.onPaymentComplete,
   });
 
@@ -869,7 +871,10 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
                     builder: (_) => OrderChatDialog(
                       orderNumber: widget.orderNumber,
                       currentRole: 'customer',
-                      currentUserName: 'Customer',
+                      currentUserName: (widget.customerName != null && widget.customerName!.trim().isNotEmpty)
+                          ? widget.customerName!
+                          : 'Customer',
+                      customerName: widget.customerName,
                     ),
                   );
                 },

@@ -343,7 +343,9 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
       builder: (_) => OrderChatDialog(
         orderNumber: order.orderNumber,
         currentRole: 'customer',
-        currentUserName: order.customerName ?? 'Customer',
+        currentUserName: (order.customerName != null && order.customerName!.trim().isNotEmpty)
+            ? order.customerName!
+            : (widget.userName ?? 'Customer'),
         customerName: order.customerName,
       ),
     );
@@ -422,7 +424,7 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
         borderRadius: BorderRadius.circular(16),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
-          onTap: () => _openChat(order),
+          onTap: () => setState(() => _selectedOrderId = order.orderNumber),
           child: Padding(
             padding: const EdgeInsets.all(16),
             child: Column(
@@ -509,6 +511,7 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
                                   qrImageUrl: 'assets/images/gcash_qr.png',
                                   orderType: order.orderType,
                                   deliveryFee: order.deliveryFee,
+                                  customerName: order.customerName,
                                   onPaymentComplete: () {
                                     _loadOrders();
                                   },

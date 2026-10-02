@@ -873,6 +873,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   orderType: orderType,
                                   subtotal: cartTotal.toDouble(),
                                   deliveryFee: deliveryFee.toDouble(),
+                                  customerName: fullName,
                                   onPaymentComplete: () {
                                     _showOrdersModal();
                                   },
