@@ -30,6 +30,36 @@ class _ItemDetailBottomSheetState extends State<ItemDetailBottomSheet> {
     super.dispose();
   }
 
+  Widget _buildItemImage() {
+    final imagePath = widget.item.image;
+    if (imagePath.startsWith('http')) {
+      return Image.network(
+        imagePath,
+        height: 220,
+        width: double.infinity,
+        fit: BoxFit.cover,
+        errorBuilder: (_, _, _) => Container(
+          height: 220,
+          width: double.infinity,
+          color: const Color(0xFFF3F4F6),
+          child: const Icon(Icons.restaurant_menu, color: Color(0xFF9CA3AF), size: 48),
+        ),
+      );
+    }
+    return Image.asset(
+      imagePath,
+      height: 220,
+      width: double.infinity,
+      fit: BoxFit.cover,
+      errorBuilder: (_, _, _) => Container(
+        height: 220,
+        width: double.infinity,
+        color: const Color(0xFFF3F4F6),
+        child: const Icon(Icons.restaurant_menu, color: Color(0xFF9CA3AF), size: 48),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Center(
@@ -48,12 +78,7 @@ class _ItemDetailBottomSheetState extends State<ItemDetailBottomSheet> {
                 children: [
                   ClipRRect(
                     borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
-                    child: Image.asset(
-                      widget.item.image,
-                      height: 220,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                    ),
+                    child: _buildItemImage(),
                   ),
                   Positioned(
                     top: 12,

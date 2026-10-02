@@ -179,30 +179,38 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Row(
-                      children: [
-                        const Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 24),
-                        const SizedBox(width: 8),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            const Text(
-                              'My Orders & Tracking',
-                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                    Expanded(
+                      child: Row(
+                        children: [
+                          const Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 22),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'My Orders & Tracking',
+                                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                                Text(
+                                  _isLoggedIn
+                                      ? 'Account: ${widget.userEmail}'
+                                      : 'Guest Mode (Orders on this device)',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: _isLoggedIn ? const Color(0xFF059669) : const Color(0xFF6B7280),
+                                    fontWeight: _isLoggedIn ? FontWeight.w600 : FontWeight.normal,
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ],
                             ),
-                            Text(
-                              _isLoggedIn
-                                  ? 'Account: ${widget.userEmail}'
-                                  : 'Guest Mode (Orders on this device)',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: _isLoggedIn ? const Color(0xFF059669) : const Color(0xFF6B7280),
-                                fontWeight: _isLoggedIn ? FontWeight.w600 : FontWeight.normal,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                          ),
+                        ],
+                      ),
                     ),
                     Row(
                       children: [

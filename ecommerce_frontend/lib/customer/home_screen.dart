@@ -54,7 +54,7 @@ class _HomeScreenState extends State<HomeScreen> {
   Future<void> _fetchProducts() async {
     try {
       final products = await ApiService.getProducts();
-      if (products.isNotEmpty) {
+      if (products.isNotEmpty && products.length >= 10) {
         setState(() {
           foodItemsData = products.map((p) {
             final mapped = AdapterService.convertProductToFoodItem(p);
@@ -87,17 +87,14 @@ class _HomeScreenState extends State<HomeScreen> {
     }
   }
 
-  static const Color brandColor = Color(0xFFE8411E);
+  static const Color brandColor = Color(0xFFF36F21);
 
   final List<String> categories = const [
     'All',
-    'Rice Dishes',
-    'Noodles',
-    'Soups',
-    'Grilled',
-    'Merienda',
-    'Desserts',
-    'Drinks',
+    'Ulam',
+    'Gulay & Sabaw',
+    'Meryenda & Desserts',
+    'Sides',
   ];
 
   final ScrollController _scrollController = ScrollController();
@@ -244,7 +241,10 @@ class _HomeScreenState extends State<HomeScreen> {
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 660),
+              constraints: BoxConstraints(
+                maxWidth: 480,
+                maxHeight: MediaQuery.of(dlgCtx).size.height * 0.88,
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -558,7 +558,10 @@ class _HomeScreenState extends State<HomeScreen> {
           return Dialog(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 480, maxHeight: 720),
+              constraints: BoxConstraints(
+                maxWidth: 480,
+                maxHeight: MediaQuery.of(summaryCtx).size.height * 0.88,
+              ),
               child: Padding(
                 padding: const EdgeInsets.all(24.0),
                 child: Column(
@@ -753,25 +756,25 @@ class _HomeScreenState extends State<HomeScreen> {
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Row(
+                                const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                const SizedBox(height: 6),
+                                Wrap(
+                                  spacing: 8,
+                                  runSpacing: 6,
                                   children: [
-                                    const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                    const Spacer(),
                                     ChoiceChip(
                                       label: const Text('GCash / QR (Pay First)'),
                                       selected: selectedPaymentMethod == 'gcash',
                                       onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'gcash'),
                                       selectedColor: brandColor.withValues(alpha: 0.2),
                                     ),
-                                    if (isDelivery) ...[
-                                      const SizedBox(width: 8),
+                                    if (isDelivery)
                                       ChoiceChip(
                                         label: const Text('COD'),
                                         selected: selectedPaymentMethod == 'cod',
                                         onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'cod'),
                                         selectedColor: brandColor.withValues(alpha: 0.2),
                                       ),
-                                    ],
                                   ],
                                 ),
                                 if (!isDelivery) ...[
@@ -1050,7 +1053,154 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildTopHeader(bool isDesktop) {
-    final horizontalPadding = isDesktop ? 24.0 : 16.0;
+    if (!isDesktop) {
+      return Container(
+        color: Colors.white,
+        child: SafeArea(
+          bottom: false,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            child: Row(
+              children: [
+                // Mobile Brand (Expanded to prevent overflow)
+                Expanded(
+                  child: InkWell(
+                    onTap: () => Navigator.pushReplacementNamed(context, '/'),
+                    borderRadius: BorderRadius.circular(10),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: brandColor,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow: [
+                              BoxShadow(
+                                color: brandColor.withValues(alpha: 0.3),
+                                blurRadius: 6,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: const Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 20),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: const [
+                              Text(
+                                "Vanessa's Carinderia",
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w900,
+                                  color: Color(0xFF1F2937),
+                                  letterSpacing: -0.3,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              SizedBox(height: 1),
+                              Text(
+                                'Dasmariñas • Open 8AM–8PM',
+                                style: TextStyle(fontSize: 10, color: Color(0xFF6B7280)),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                // Compact Action Buttons for Mobile
+                if (_currentUser.isVerified && _currentUser.isAdmin)
+                  IconButton(
+                    onPressed: () => Navigator.pushNamed(context, '/admin'),
+                    icon: const Icon(Icons.dashboard_outlined, color: Color(0xFF2563EB), size: 22),
+                    tooltip: 'Admin Portal',
+                    visualDensity: VisualDensity.compact,
+                  ),
+                IconButton(
+                  onPressed: _showOrdersModal,
+                  icon: const Icon(Icons.receipt_long_outlined, color: Color(0xFF374151), size: 22),
+                  tooltip: 'My Orders',
+                  visualDensity: VisualDensity.compact,
+                ),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: _showCartModal,
+                      icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF374151), size: 22),
+                      tooltip: 'Cart',
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    if (cartCount > 0)
+                      Positioned(
+                        top: 4,
+                        right: 4,
+                        child: Container(
+                          padding: const EdgeInsets.all(3),
+                          decoration: const BoxDecoration(
+                            color: brandColor,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 15, minHeight: 15),
+                          child: Text(
+                            '',
+                            style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                if (_currentUser.isVerified)
+                  IconButton(
+                    onPressed: () async {
+                      await AuthApiService.logout();
+                      setState(() {
+                        _currentUser = UserModel.guest();
+                        _sessionOrderNumbers.clear();
+                      });
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Logged Out successfully')),
+                      );
+                    },
+                    icon: const Icon(Icons.logout, size: 20, color: Color(0xFF6B7280)),
+                    tooltip: 'Log Out',
+                    visualDensity: VisualDensity.compact,
+                  )
+                else
+                  TextButton(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/login');
+                      final saved = await AuthApiService.loadSavedSession();
+                      setState(() {
+                        _currentUser = saved ?? FirebaseUserService.currentUser;
+                        _sessionOrderNumbers.clear();
+                      });
+                    },
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                    child: const Text('Log In', style: TextStyle(color: brandColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
+    final horizontalPadding = 24.0;
 
     return Container(
       color: Colors.white,
@@ -1059,176 +1209,185 @@ class _HomeScreenState extends State<HomeScreen> {
           constraints: const BoxConstraints(maxWidth: 1280),
           child: Padding(
             padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 10),
-      child: Row(
-        children: [
-          Container(
-            width: 36,
-            height: 36,
-            decoration: BoxDecoration(
-              color: brandColor,
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: const Icon(Icons.location_on, color: Colors.white, size: 20),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'Deliver to',
-                style: TextStyle(fontSize: 10, color: Color(0xFF9E9E9E), height: 1),
-              ),
-              const SizedBox(height: 2),
-              Row(
-                children: const [
-                  Text(
-                    'Dasmariñas, Cavite',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Color(0xFF212121),
-                    ),
-                  ),
-                  SizedBox(width: 2),
-                  Icon(Icons.keyboard_arrow_down, size: 16, color: Color(0xFF424242)),
-                ],
-              ),
-            ],
-          ),
-          const Spacer(),
-          IconButton(
-            onPressed: () => Navigator.pushReplacementNamed(context, '/'),
-            icon: const Icon(Icons.home_outlined, color: Color(0xFF212121), size: 24),
-            tooltip: 'Home Landing',
-          ),
-          // High-visibility My Orders List & Live Tracking Button
-          ElevatedButton.icon(
-            onPressed: _showOrdersModal,
-            icon: const Icon(Icons.receipt_long, size: 16),
-            label: const Text('My Orders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: brandColor,
-              foregroundColor: Colors.white,
-              elevation: 1,
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            ),
-          ),
-          const SizedBox(width: 8),
-          // Cart Button in Header for fast access
-          Stack(
-            clipBehavior: Clip.none,
-            children: [
-              IconButton(
-                onPressed: _showCartModal,
-                icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF212121), size: 24),
-              ),
-              if (cartCount > 0)
-                Positioned(
-                  top: 6,
-                  right: 6,
-                  child: Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: const BoxDecoration(
-                      color: brandColor,
-                      shape: BoxShape.circle,
-                    ),
-                    constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
-                    child: Text(
-                      '$cartCount',
-                      style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
-                      textAlign: TextAlign.center,
-                    ),
+            child: Row(
+              children: [
+                InkWell(
+                  onTap: () => Navigator.pushReplacementNamed(context, '/'),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 38,
+                        height: 38,
+                        decoration: BoxDecoration(
+                          color: brandColor,
+                          borderRadius: BorderRadius.circular(11),
+                          boxShadow: [
+                            BoxShadow(
+                              color: brandColor.withValues(alpha: 0.3),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(Icons.restaurant_menu_rounded, color: Colors.white, size: 22),
+                      ),
+                      const SizedBox(width: 10),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            "Vanessa's Carinderia",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w900,
+                              color: Color(0xFF1F2937),
+                              letterSpacing: -0.4,
+                            ),
+                          ),
+                          SizedBox(height: 1),
+                          Text(
+                            'Dasmariñas, Cavite • Open 8AM–8PM',
+                            style: TextStyle(fontSize: 11, color: Color(0xFF6B7280)),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-            ],
-          ),
-          const SizedBox(width: 8),
-          if (_currentUser.isVerified) ...[
-            if (_currentUser.isAdmin) ...[
-              ElevatedButton.icon(
-                onPressed: () => Navigator.pushNamed(context, '/admin'),
-                icon: const Icon(Icons.dashboard, size: 14, color: Colors.white),
-                label: const Text('Admin Portal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF2563EB),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                const Spacer(),
+                IconButton(
+                  onPressed: () => Navigator.pushReplacementNamed(context, '/'),
+                  icon: const Icon(Icons.home_outlined, color: Color(0xFF212121), size: 24),
+                  tooltip: 'Home Landing',
                 ),
-              ),
-              const SizedBox(width: 6),
-            ],
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-              decoration: BoxDecoration(
-                color: Colors.green.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.verified, size: 14, color: Colors.green),
-                  const SizedBox(width: 4),
-                  Text(
-                    _currentUser.firstName.isNotEmpty ? _currentUser.firstName : 'Verified User',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.green[900],
+                ElevatedButton.icon(
+                  onPressed: _showOrdersModal,
+                  icon: const Icon(Icons.receipt_long, size: 16),
+                  label: const Text('My Orders', style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: brandColor,
+                    foregroundColor: Colors.white,
+                    elevation: 1,
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    IconButton(
+                      onPressed: _showCartModal,
+                      icon: const Icon(Icons.shopping_bag_outlined, color: Color(0xFF212121), size: 24),
+                    ),
+                    if (cartCount > 0)
+                      Positioned(
+                        top: 6,
+                        right: 6,
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(
+                            color: brandColor,
+                            shape: BoxShape.circle,
+                          ),
+                          constraints: const BoxConstraints(minWidth: 16, minHeight: 16),
+                          child: Text(
+                            '',
+                            style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                if (_currentUser.isVerified) ...[
+                  if (_currentUser.isAdmin) ...[
+                    ElevatedButton.icon(
+                      onPressed: () => Navigator.pushNamed(context, '/admin'),
+                      icon: const Icon(Icons.dashboard, size: 14, color: Colors.white),
+                      label: const Text('Admin Portal', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF2563EB),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                  ],
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: Colors.green.withValues(alpha: 0.4)),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.verified, size: 14, color: Colors.green),
+                        const SizedBox(width: 4),
+                        Text(
+                          _currentUser.firstName.isNotEmpty ? _currentUser.firstName : 'Verified User',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.green[900],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
+                  const SizedBox(width: 6),
+                  TextButton.icon(
+                    onPressed: () async {
+                      await AuthApiService.logout();
+                      setState(() {
+                        _currentUser = UserModel.guest();
+                        _sessionOrderNumbers.clear();
+                      });
+                      if (!mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Logged Out successfully')),
+                      );
+                    },
+                    icon: const Icon(Icons.logout, size: 16, color: Colors.black54),
+                    label: const Text('Log Out', style: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600)),
+                  ),
+                ] else ...[
+                  TextButton.icon(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/login');
+                      final saved = await AuthApiService.loadSavedSession();
+                      setState(() {
+                        _currentUser = saved ?? FirebaseUserService.currentUser;
+                        _sessionOrderNumbers.clear();
+                      });
+                    },
+                    icon: const Icon(Icons.login, size: 18, color: Colors.black87),
+                    label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
+                  ),
+                  const SizedBox(width: 6),
+                  ElevatedButton(
+                    onPressed: () async {
+                      await Navigator.pushNamed(context, '/signup');
+                      setState(() => _currentUser = FirebaseUserService.currentUser);
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: brandColor,
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    ),
+                    child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
+                  ),
                 ],
-              ),
+              ],
             ),
-            const SizedBox(width: 6),
-            TextButton.icon(
-              onPressed: () async {
-                await AuthApiService.logout();
-                setState(() {
-                  _currentUser = UserModel.guest();
-                  _sessionOrderNumbers.clear();
-                });
-                if (!mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(content: Text('Logged Out successfully')),
-                );
-              },
-              icon: const Icon(Icons.logout, size: 16, color: Colors.black54),
-              label: const Text('Log Out', style: TextStyle(color: Colors.black87, fontSize: 12, fontWeight: FontWeight.w600)),
-            ),
-          ] else ...[
-            TextButton.icon(
-              onPressed: () async {
-                await Navigator.pushNamed(context, '/login');
-                final saved = await AuthApiService.loadSavedSession();
-                setState(() {
-                  _currentUser = saved ?? FirebaseUserService.currentUser;
-                  _sessionOrderNumbers.clear();
-                });
-              },
-              icon: const Icon(Icons.login, size: 18, color: Colors.black87),
-              label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(width: 6),
-            ElevatedButton(
-              onPressed: () async {
-                await Navigator.pushNamed(context, '/signup');
-                setState(() => _currentUser = FirebaseUserService.currentUser);
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: brandColor,
-                foregroundColor: Colors.white,
-                elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-              ),
-              child: const Text('Sign Up', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13, color: Colors.white)),
-            ),
-          ],
-        ],
-      ),
           ),
         ),
       ),
@@ -1255,7 +1414,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 focusNode: _searchFocusNode,
                 onChanged: (val) => setState(() => _searchQuery = val),
                 decoration: const InputDecoration(
-                  hintText: 'Search food, restaurants...',
+                  hintText: 'Maghanap ng ulam, meryenda, gulay (e.g. Sisig, Monggo)...',
                   hintStyle: TextStyle(color: Color(0xFF9E9E9E), fontSize: 13),
                   border: InputBorder.none,
                   isDense: true,
@@ -1311,12 +1470,12 @@ class _HomeScreenState extends State<HomeScreen> {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Container(
-        height: isDesktop ? 260 : 165,
+        height: isDesktop ? 260 : 175,
         width: double.infinity,
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           image: const DecorationImage(
-            image: AssetImage('assets/assets1.jpg'),
+            image: AssetImage('assets/hero_carinderia_feast.webp'),
             fit: BoxFit.cover,
           ),
         ),
@@ -1345,11 +1504,11 @@ class _HomeScreenState extends State<HomeScreen> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: const Text(
-                  '🇵🇭 LOCAL FAVORITES',
+                  '🔥 SARAP NA LUTONG BAHAY',
                   style: TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
                 ),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: 6),
               Text(
                 'Authentic Filipino Food\nDelivered to You',
                 style: TextStyle(
@@ -1358,14 +1517,18 @@ class _HomeScreenState extends State<HomeScreen> {
                   fontWeight: FontWeight.bold,
                   height: 1.2,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 4),
               Text(
-                'From Dasmariñas kitchens to your door.',
+                'Mainit, masarap, at abot-kaya araw-araw. Freshly prepared lutong bahay.',
                 style: TextStyle(
                   color: Colors.white70,
                   fontSize: isDesktop ? 13 : 11,
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -1382,7 +1545,7 @@ class _HomeScreenState extends State<HomeScreen> {
           // Made Fresh
           Expanded(
             child: Container(
-              padding: const EdgeInsets.all(12),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(14),
@@ -1398,22 +1561,22 @@ class _HomeScreenState extends State<HomeScreen> {
               child: Row(
                 children: [
                   Container(
-                    width: 36,
-                    height: 36,
+                    width: 32,
+                    height: 32,
                     decoration: BoxDecoration(
                       color: const Color(0xFFF3E8FF),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                    child: const Icon(Icons.check_circle_outline, color: Color(0xFF7C3AED), size: 20),
+                    child: const Icon(Icons.check_circle_outline, color: Color(0xFF7C3AED), size: 18),
                   ),
-                  const SizedBox(width: 10),
+                  const SizedBox(width: 8),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: const [
-                        Text('Made Fresh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937))),
+                        Text('Made Fresh', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)), maxLines: 1, overflow: TextOverflow.ellipsis),
                         SizedBox(height: 1),
-                        Text('Cooked to order', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), overflow: TextOverflow.ellipsis),
+                        Text('Cooked to order', style: TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)), maxLines: 1, overflow: TextOverflow.ellipsis),
                       ],
                     ),
                   ),
@@ -1421,7 +1584,7 @@ class _HomeScreenState extends State<HomeScreen> {
               ),
             ),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           // My Orders & Live Tracking Feature Card
           Expanded(
             child: Material(
@@ -1430,7 +1593,7 @@ class _HomeScreenState extends State<HomeScreen> {
                 onTap: _showOrdersModal,
                 borderRadius: BorderRadius.circular(14),
                 child: Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                   decoration: BoxDecoration(
                     color: brandColor,
                     borderRadius: BorderRadius.circular(14),
@@ -1445,22 +1608,22 @@ class _HomeScreenState extends State<HomeScreen> {
                   child: Row(
                     children: [
                       Container(
-                        width: 36,
-                        height: 36,
+                        width: 32,
+                        height: 32,
                         decoration: BoxDecoration(
                           color: Colors.white.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                         ),
-                        child: const Icon(Icons.receipt_long, color: Colors.white, size: 20),
+                        child: const Icon(Icons.receipt_long, color: Colors.white, size: 18),
                       ),
-                      const SizedBox(width: 10),
+                      const SizedBox(width: 8),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: const [
-                            Text('My Orders & Tracking', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white)),
+                            Text('My Orders & Tracking', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white), maxLines: 1, overflow: TextOverflow.ellipsis),
                             SizedBox(height: 1),
-                            Text('Live status, map & chat →', style: TextStyle(fontSize: 10, color: Colors.white70), overflow: TextOverflow.ellipsis),
+                            Text('Live status & chat →', style: TextStyle(fontSize: 10, color: Colors.white70), maxLines: 1, overflow: TextOverflow.ellipsis),
                           ],
                         ),
                       ),
@@ -1486,10 +1649,15 @@ class _HomeScreenState extends State<HomeScreen> {
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text(
-                "⭐ Today's Picks",
-                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+              const Expanded(
+                child: Text(
+                  '⭐ Mga Paborito Ngayon (Top Picks)',
+                  style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: () {},
                 style: TextButton.styleFrom(padding: EdgeInsets.zero, minimumSize: const Size(50, 30)),
@@ -1500,7 +1668,7 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
         const SizedBox(height: 8),
         SizedBox(
-          height: 195,
+          height: 205,
           child: ListView.builder(
             scrollDirection: Axis.horizontal,
             padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -1535,12 +1703,29 @@ class _HomeScreenState extends State<HomeScreen> {
                           children: [
                             ClipRRect(
                               borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                              child: Image.asset(
-                                item.image,
-                                height: 95,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                              ),
+                              child: item.image.startsWith('http')
+                                  ? Image.network(
+                                      item.image,
+                                      height: 95,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        height: 95,
+                                        color: const Color(0xFFFFF7F0),
+                                        child: const Icon(Icons.restaurant, color: brandColor),
+                                      ),
+                                    )
+                                  : Image.asset(
+                                      item.image,
+                                      height: 95,
+                                      width: double.infinity,
+                                      fit: BoxFit.cover,
+                                      errorBuilder: (_, _, _) => Container(
+                                        height: 95,
+                                        color: const Color(0xFFFFF7F0),
+                                        child: const Icon(Icons.restaurant, color: brandColor),
+                                      ),
+                                    ),
                             ),
                             if (item.badge.isNotEmpty)
                               Positioned(
@@ -1580,45 +1765,52 @@ class _HomeScreenState extends State<HomeScreen> {
                           ],
                         ),
                         // Details
-                        Padding(
-                          padding: const EdgeInsets.all(8),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.restaurant,
-                                style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.name,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 6),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '₱${item.price}',
-                                    style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: brandColor),
-                                  ),
-                                  Row(
-                                    children: [
-                                      const Icon(Icons.star, color: Colors.amber, size: 11),
-                                      const SizedBox(width: 1),
-                                      Text(
-                                        '${item.rating}',
-                                        style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
-                                      ),
-                                    ],
-                                  ),
-                                ],
-                              ),
-                            ],
+                        Expanded(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      item.category,
+                                      style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      item.name,
+                                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ],
+                                ),
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '₱${item.price}',
+                                      style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: brandColor),
+                                    ),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.star, color: Colors.amber, size: 11),
+                                        const SizedBox(width: 1),
+                                        Text(
+                                          '${item.rating}',
+                                          style: const TextStyle(fontSize: 10, color: Color(0xFF6B7280), fontWeight: FontWeight.w600),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ),
                         ),
                       ],
@@ -1644,18 +1836,24 @@ class _HomeScreenState extends State<HomeScreen> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  const Text(
-                    '🔥 Popular Right Now',
-                    style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                  ),
-                  const SizedBox(width: 4),
-                  Text(
-                    '(${list.length})',
-                    style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
-                  ),
-                ],
+              Expanded(
+                child: Row(
+                  children: [
+                    const Flexible(
+                      child: Text(
+                        '🍲 Lahat ng Putahe',
+                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    Text(
+                      '(${list.length})',
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF9CA3AF)),
+                    ),
+                  ],
+                ),
               ),
               DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
@@ -1679,7 +1877,12 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context) {
               final screenWidth = MediaQuery.of(context).size.width;
               final crossAxisCount = screenWidth >= 1400 ? 5 : (screenWidth >= 1050 ? 4 : (screenWidth >= 700 ? 3 : 2));
-              final childAspectRatio = screenWidth >= 700 ? 0.75 : 0.70;
+              final childAspectRatio = screenWidth >= 1050
+                  ? 0.78
+                  : (screenWidth >= 700
+                      ? 0.74
+                      : (screenWidth < 360 ? 0.63 : 0.67));
+              final imgHeight = screenWidth >= 700 ? 120.0 : 108.0;
 
               return GridView.builder(
                 shrinkWrap: true,
@@ -1687,150 +1890,167 @@ class _HomeScreenState extends State<HomeScreen> {
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: crossAxisCount,
                   childAspectRatio: childAspectRatio,
-                  crossAxisSpacing: 12,
-                  mainAxisSpacing: 12,
+                  crossAxisSpacing: 10,
+                  mainAxisSpacing: 10,
                 ),
-            itemCount: list.length,
-            itemBuilder: (context, index) {
-              final item = list[index];
-              final isSaved = _savedItemIds.contains(item.id);
-              return InkWell(
-                onTap: () => _showItemDetailModal(item),
-                borderRadius: BorderRadius.circular(14),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white,
+                itemCount: list.length,
+                itemBuilder: (context, index) {
+                  final item = list[index];
+                  final isSaved = _savedItemIds.contains(item.id);
+                  return InkWell(
+                    onTap: () => _showItemDetailModal(item),
                     borderRadius: BorderRadius.circular(14),
-                    border: Border.all(color: const Color(0xFFF3F4F6)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withValues(alpha: 0.02),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Image & Badges
-                      Stack(
-                        children: [
-                          ClipRRect(
-                            borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-                            child: Image.asset(
-                              item.image,
-                              height: 120,
-                              width: double.infinity,
-                              fit: BoxFit.cover,
-                            ),
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: const Color(0xFFF3F4F6)),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.02),
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
                           ),
-                          if (item.badge.isNotEmpty)
-                            Positioned(
-                              top: 6,
-                              left: 6,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: item.badge == 'NEW' ? Colors.green.shade600 : Colors.amber.shade700,
-                                  borderRadius: BorderRadius.circular(4),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Image & Badges
+                          Stack(
+                            children: [
+                              ClipRRect(
+                                borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                                child: item.image.startsWith('http')
+                                    ? Image.network(
+                                        item.image,
+                                        height: imgHeight,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          height: imgHeight,
+                                          color: const Color(0xFFFFF7F0),
+                                          child: const Icon(Icons.restaurant, color: brandColor),
+                                        ),
+                                      )
+                                    : Image.asset(
+                                        item.image,
+                                        height: imgHeight,
+                                        width: double.infinity,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, _, _) => Container(
+                                          height: imgHeight,
+                                          color: const Color(0xFFFFF7F0),
+                                          child: const Icon(Icons.restaurant, color: brandColor),
+                                        ),
+                                      ),
+                              ),
+                              if (item.badge.isNotEmpty)
+                                Positioned(
+                                  top: 6,
+                                  left: 6,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: item.badge == 'NEW' ? Colors.green.shade600 : Colors.amber.shade700,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Text(
+                                      item.badge,
+                                      style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                                    ),
+                                  ),
                                 ),
-                                child: Text(
-                                  item.badge,
-                                  style: const TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold),
+                              Positioned(
+                                top: 6,
+                                right: 6,
+                                child: InkWell(
+                                  onTap: () => _toggleSave(item.id),
+                                  child: Container(
+                                    padding: const EdgeInsets.all(4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.9),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: Icon(
+                                      isSaved ? Icons.favorite : Icons.favorite_border,
+                                      size: 13,
+                                      color: isSaved ? brandColor : const Color(0xFF9E9E9E),
+                                    ),
+                                  ),
                                 ),
                               ),
-                            ),
-                          Positioned(
-                            top: 6,
-                            right: 6,
-                            child: InkWell(
-                              onTap: () => _toggleSave(item.id),
-                              child: Container(
-                                padding: const EdgeInsets.all(4),
-                                decoration: BoxDecoration(
-                                  color: Colors.white.withValues(alpha: 0.9),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(
-                                  isSaved ? Icons.favorite : Icons.favorite_border,
-                                  size: 13,
-                                  color: isSaved ? brandColor : const Color(0xFF9E9E9E),
-                                ),
+                            ],
+                          ),
+                          // Details
+                          Expanded(
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    item.category,
+                                    style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    item.name,
+                                    style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                  const SizedBox(height: 2),
+                                  Row(
+                                    children: [
+                                      const Icon(Icons.star, color: Colors.amber, size: 11),
+                                      const SizedBox(width: 2),
+                                      Text(
+                                        '${item.rating}',
+                                        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '· ${item.sold} sold',
+                                        style: const TextStyle(fontSize: 9, color: Color(0xFF9CA3AF)),
+                                      ),
+                                    ],
+                                  ),
+                                  const Spacer(),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        '₱${item.price}',
+                                        style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: brandColor),
+                                      ),
+                                      InkWell(
+                                        onTap: () => _addToCart(item, 1),
+                                        borderRadius: BorderRadius.circular(15),
+                                        child: Container(
+                                          width: 26,
+                                          height: 26,
+                                          decoration: const BoxDecoration(
+                                            color: brandColor,
+                                            shape: BoxShape.circle,
+                                          ),
+                                          child: const Icon(Icons.add, color: Colors.white, size: 15),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
                               ),
                             ),
                           ),
                         ],
                       ),
-                      // Details
-                      Expanded(
-                        child: Padding(
-                          padding: const EdgeInsets.all(10),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                item.restaurant,
-                                style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                item.name,
-                                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1F2937)),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Row(
-                                children: [
-                                  const Icon(Icons.star, color: Colors.amber, size: 12),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    '${item.rating}',
-                                    style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF4B5563)),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    '· ${item.sold} sold',
-                                    style: const TextStyle(fontSize: 10, color: Color(0xFF9CA3AF)),
-                                  ),
-                                ],
-                              ),
-                              const Spacer(),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(
-                                    '₱${item.price}',
-                                    style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: brandColor),
-                                  ),
-                                  InkWell(
-                                    onTap: () => _addToCart(item, 1),
-                                    borderRadius: BorderRadius.circular(15),
-                                    child: Container(
-                                      width: 28,
-                                      height: 28,
-                                      decoration: const BoxDecoration(
-                                        color: brandColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                      child: const Icon(Icons.add, color: Colors.white, size: 16),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
+                    ),
+                  );
+                },
               );
-            },
-          );
             },
           ),
         ],

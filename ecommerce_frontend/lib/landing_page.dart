@@ -127,6 +127,22 @@ const foods = [
     'assets/dish_ginataan_bilobilo.webp',
     'Meryenda & Desserts',
   ),
+  // 13. Fried Chicken - ₱50
+  FoodItem(
+    'Crispy Fried Chicken',
+    'Golden-crispy seasoned fried chicken served with savory homestyle gravy',
+    '₱50',
+    'assets/dish_fried_chicken.webp',
+    'Ulam',
+  ),
+  // 14. Hotdog - ₱10/pc
+  FoodItem(
+    'Pinoy Red Hotdog',
+    'Classic tender Filipino red hotdog cooked to juicy perfection',
+    '₱10/pc',
+    'assets/dish_hotdog.webp',
+    'Sides',
+  ),
 ];
 
 class HomePage extends StatefulWidget {
@@ -285,20 +301,23 @@ class _HomePageState extends State<HomePage> {
                       ? 4
                       : width > 700
                       ? 3
-                      : width > 450
+                      : width > 480
                       ? 2
                       : 1;
+                  final childAspectRatio = cols == 1
+                      ? 1.15
+                      : (cols == 2 ? 0.78 : (cols == 3 ? 0.82 : 0.84));
                   return SliverGrid(
                     delegate: SliverChildBuilderDelegate(
                       (context, index) =>
-                          _foodCard(visibleFoods[index], compact),
+                          _foodCard(visibleFoods[index], compact, isSingleCol: cols == 1),
                       childCount: visibleFoods.length,
                     ),
                     gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
                       crossAxisCount: cols,
-                      crossAxisSpacing: 18,
-                      mainAxisSpacing: 18,
-                      childAspectRatio: cols == 1 ? 1.45 : 0.84,
+                      crossAxisSpacing: 16,
+                      mainAxisSpacing: 16,
+                      childAspectRatio: childAspectRatio,
                     ),
                   );
                 },
@@ -313,7 +332,7 @@ class _HomePageState extends State<HomePage> {
   }
 
   Widget _header(bool compact) => Padding(
-    padding: EdgeInsets.symmetric(horizontal: compact ? 20 : 56, vertical: 18),
+    padding: EdgeInsets.symmetric(horizontal: compact ? 16 : 56, vertical: 14),
     child: Row(
       children: [
         Flexible(
@@ -325,36 +344,36 @@ class _HomePageState extends State<HomePage> {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Container(
-                    width: 42,
-                    height: 42,
+                    width: compact ? 36 : 42,
+                    height: compact ? 36 : 42,
                     decoration: BoxDecoration(
                       color: orange,
-                      borderRadius: BorderRadius.circular(13),
+                      borderRadius: BorderRadius.circular(12),
                       boxShadow: [
                         BoxShadow(
                           color: orange.withValues(alpha: 0.3),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: const Icon(
+                    child: Icon(
                       Icons.restaurant_menu_rounded,
                       color: Colors.white,
-                      size: 24,
+                      size: compact ? 20 : 24,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Flexible(
                     child: Text(
                       'Vanessa\'s Carinderia',
                       overflow: TextOverflow.ellipsis,
                       maxLines: 1,
                       style: TextStyle(
-                        fontSize: compact ? 19 : 23,
+                        fontSize: compact ? 17 : 23,
                         fontWeight: FontWeight.w900,
                         color: ink,
-                        letterSpacing: -0.6,
+                        letterSpacing: -0.5,
                       ),
                     ),
                   ),
@@ -394,15 +413,26 @@ class _HomePageState extends State<HomePage> {
             ),
           ),
           const SizedBox(width: 16),
+        ] else ...[
+          IconButton(
+            onPressed: () => Navigator.pushNamed(context, '/shop'),
+            icon: const Icon(Icons.shopping_bag_outlined, color: orange, size: 22),
+            tooltip: 'Order Online',
+            visualDensity: VisualDensity.compact,
+          ),
+          const SizedBox(width: 4),
         ],
         OutlinedButton.icon(
           onPressed: () => Navigator.pushNamed(context, '/login'),
-          icon: const Icon(Icons.login_rounded, size: 18),
+          icon: const Icon(Icons.login_rounded, size: 16),
           label: const Text('Log in'),
           style: OutlinedButton.styleFrom(
             foregroundColor: ink,
             side: const BorderSide(color: Color(0xFFDED0C5), width: 1.2),
-            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 13),
+            padding: EdgeInsets.symmetric(
+              horizontal: compact ? 12 : 18,
+              vertical: compact ? 8 : 13,
+            ),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(12),
             ),
@@ -791,7 +821,7 @@ class _HomePageState extends State<HomePage> {
     ),
   );
 
-  Widget _foodCard(FoodItem food, bool compact) => MouseRegion(
+  Widget _foodCard(FoodItem food, bool compact, {bool isSingleCol = false}) => MouseRegion(
     cursor: SystemMouseCursors.click,
     child: InkWell(
       onTap: () => Navigator.pushNamed(context, '/shop'),
@@ -814,7 +844,7 @@ class _HomePageState extends State<HomePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Expanded(
-              flex: 56,
+              flex: isSingleCol ? 50 : 54,
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -871,11 +901,11 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             Expanded(
-              flex: 44,
+              flex: isSingleCol ? 50 : 46,
               child: Padding(
-                padding: const EdgeInsets.symmetric(
+                padding: EdgeInsets.symmetric(
                   horizontal: 14,
-                  vertical: 12,
+                  vertical: isSingleCol ? 12 : 10,
                 ),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
