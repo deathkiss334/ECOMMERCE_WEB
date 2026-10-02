@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductTable;
-use App\Services\FirebaseService;
+use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class ProductTableController extends Controller
@@ -57,10 +57,11 @@ class ProductTableController extends Controller
             $validated
         );
 
-        FirebaseService::syncProductTable($product);
+        // Sync to Supabase
+        SupabaseService::syncProductTable($product);
 
         return response()->json([
-            'message' => 'Product saved successfully to product_table',
+            'message' => 'Product saved successfully to Supabase',
             'product' => $product,
         ], 201);
     }
@@ -82,10 +83,11 @@ class ProductTableController extends Controller
 
         $product->update($validated);
 
-        FirebaseService::syncProductTable($product);
+        // Sync to Supabase
+        SupabaseService::syncProductTable($product);
 
         return response()->json([
-            'message' => 'Product updated successfully in product_table',
+            'message' => 'Product updated successfully in Supabase',
             'product' => $product,
         ]);
     }

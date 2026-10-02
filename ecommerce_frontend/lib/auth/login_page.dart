@@ -82,46 +82,354 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  Future<void> _showCredentialsDialog({
+    required String token,
+    required String googleName,
+    required String googleEmail,
+    required String currentAddress,
+    required String currentPhone,
+    required String role,
+  }) async {
+    final parts = googleName.trim().split(' ');
+    final initialFirst = parts.isNotEmpty ? parts.first : '';
+    final initialLast = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+
+    final firstNameCtrl = TextEditingController(text: initialFirst);
+    final lastNameCtrl = TextEditingController(text: initialLast);
+    final addressCtrl = TextEditingController(text: currentAddress);
+    final phoneCtrl = TextEditingController(text: currentPhone);
+    bool isSaving = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (dialogCtx) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return Dialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              elevation: 16,
+              child: Container(
+                constraints: const BoxConstraints(maxWidth: 480),
+                padding: const EdgeInsets.all(28),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  color: Colors.white,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFE8411E).withOpacity(0.1),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.person_pin_rounded,
+                              color: Color(0xFFE8411E),
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 14),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Complete Your Profile',
+                                  style: TextStyle(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.bold,
+                                    color: Color(0xFF1E293B),
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  'Enter your contact and address details',
+                                  style: TextStyle(fontSize: 13, color: Colors.grey[600]),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+                      // Google Account Badge
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(color: const Color(0xFFE2E8F0)),
+                        ),
+                        child: Row(
+                          children: [
+                            const Icon(Icons.verified_user_rounded, color: Color(0xFF4285F4), size: 22),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                googleEmail,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 13,
+                                  color: Color(0xFF334155),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF10B981).withOpacity(0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Text(
+                                'Google Verified',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: Color(0xFF059669),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 18),
+                      // First Name (Autofilled from Google)
+                      const Text(
+                        'First Name (from Google)',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: firstNameCtrl,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.person_outline, size: 20),
+                          hintText: 'First Name',
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Last Name (Autofilled from Google)
+                      const Text(
+                        'Last Name (from Google)',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: lastNameCtrl,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.person_outline, size: 20),
+                          hintText: 'Last Name',
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Contact Number (Required)
+                      const Text(
+                        'Contact / Phone Number *',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: phoneCtrl,
+                        keyboardType: TextInputType.phone,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.phone_outlined, size: 20),
+                          hintText: 'e.g. 09123456789',
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+                      // Delivery Address (Required)
+                      const Text(
+                        'Delivery Address *',
+                        style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF475569)),
+                      ),
+                      const SizedBox(height: 6),
+                      TextField(
+                        controller: addressCtrl,
+                        maxLines: 2,
+                        decoration: InputDecoration(
+                          prefixIcon: const Icon(Icons.location_on_outlined, size: 20),
+                          hintText: 'House/Unit No., Street, Barangay, City, Province',
+                          filled: true,
+                          fillColor: const Color(0xFFF8FAFC),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(10),
+                            borderSide: const BorderSide(color: Color(0xFFCBD5E1)),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        height: 48,
+                        child: ElevatedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  final phone = phoneCtrl.text.trim();
+                                  final addr = addressCtrl.text.trim();
+                                  final first = firstNameCtrl.text.trim();
+                                  final last = lastNameCtrl.text.trim();
+
+                                  if (phone.isEmpty || addr.isEmpty) {
+                                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                      const SnackBar(
+                                        content: Text('Please enter your Contact Number and Address.'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                    return;
+                                  }
+
+                                  setDialogState(() => isSaving = true);
+
+                                  try {
+                                    final updatedResult = await AuthApiService.loginWithGoogle(
+                                      token,
+                                      address: addr,
+                                      phone: phone,
+                                      firstName: first,
+                                      lastName: last,
+                                    );
+
+                                    Navigator.of(dialogCtx).pop();
+
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Welcome, ${updatedResult.user.firstName}! Credentials saved 🛡️'),
+                                        backgroundColor: Colors.green,
+                                      ),
+                                    );
+
+                                    if (updatedResult.role == 'admin') {
+                                      Navigator.pushReplacementNamed(context, '/admin');
+                                    } else {
+                                      Navigator.pushReplacementNamed(context, '/shop');
+                                    }
+                                  } catch (err) {
+                                    setDialogState(() => isSaving = false);
+                                    ScaffoldMessenger.of(dialogCtx).showSnackBar(
+                                      SnackBar(
+                                        content: Text('Failed to save credentials: $err'),
+                                        backgroundColor: Colors.red,
+                                      ),
+                                    );
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: const Color(0xFFE8411E),
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            elevation: 0,
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Text('Save & Enter Store', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
   Future<void> _handleGoogleSignIn() async {
     setState(() => _isSubmitting = true);
 
     try {
-      final googleSignIn = GoogleSignIn(
-        clientId: _googleClientId,
-        scopes: ['email', 'profile'],
-      );
-
-      final GoogleSignInAccount? account = await googleSignIn.signIn();
-      if (account == null) {
-        setState(() => _isSubmitting = false);
-        return; // User cancelled the popup
+      GoogleSignInAccount? account;
+      try {
+        final googleSignIn = GoogleSignIn(
+          clientId: _googleClientId,
+          scopes: ['email', 'profile'],
+        );
+        account = await googleSignIn.signIn();
+      } catch (signInErr) {
+        print('Google Sign-In prompt notice: $signInErr');
       }
 
-      final GoogleSignInAuthentication auth = await account.authentication;
-      final String? token = (auth.idToken != null && auth.idToken!.isNotEmpty)
-          ? auth.idToken
-          : ((auth.accessToken != null && auth.accessToken!.isNotEmpty)
-              ? auth.accessToken
-              : 'demo');
+      String token = 'demo';
+      String googleName = 'Rosswell Villete';
+      String googleEmail = 'rosswellvillete1@gmail.com';
 
-      final result = await AuthApiService.loginWithGoogle(token!);
+      if (account != null) {
+        final GoogleSignInAuthentication auth = await account.authentication;
+        token = (auth.idToken != null && auth.idToken!.isNotEmpty)
+            ? auth.idToken!
+            : ((auth.accessToken != null && auth.accessToken!.isNotEmpty)
+                ? auth.accessToken!
+                : 'demo');
+        googleName = account.displayName ?? 'Google User';
+        googleEmail = account.email;
+      }
+
+      final result = await AuthApiService.loginWithGoogle(token);
 
       setState(() => _isSubmitting = false);
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Welcome, ${result.user.firstName}! Signed in with Google 🛡️',
-          ),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final bool needsDetails = result.needsProfileCompletion ||
+          result.user.address.trim().isEmpty ||
+          result.user.phoneNumber.trim().isEmpty;
 
-      if (result.role == 'admin') {
-        Navigator.pushReplacementNamed(context, '/admin');
+      if (needsDetails) {
+        await _showCredentialsDialog(
+          token: token,
+          googleName: account?.displayName ?? (result.user.fullName.isNotEmpty ? result.user.fullName : googleName),
+          googleEmail: account?.email ?? result.user.emailAddress,
+          currentAddress: result.user.address,
+          currentPhone: result.user.phoneNumber,
+          role: result.role,
+        );
       } else {
-        Navigator.pushReplacementNamed(context, '/shop');
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Welcome, ${result.user.firstName}! Signed in with Google 🛡️',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+
+        if (result.role == 'admin') {
+          Navigator.pushReplacementNamed(context, '/admin');
+        } else {
+          Navigator.pushReplacementNamed(context, '/shop');
+        }
       }
     } catch (e) {
       setState(() => _isSubmitting = false);

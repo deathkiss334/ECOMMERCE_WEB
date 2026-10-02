@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\User;
+use App\Services\SupabaseService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -63,7 +64,8 @@ class AdminController extends Controller
 
         $order->save();
 
-    
+        // Sync updated order to Supabase for real-time dashboard/mobile updates
+        SupabaseService::syncOrder($order);
 
         return response()->json([
             'success' => true,
@@ -92,7 +94,7 @@ class AdminController extends Controller
         $order->lalamove_tracking_url = $trackingUrl;
         $order->save();
 
-        \App\Services\FirebaseService::syncOrder($order);
+        SupabaseService::syncOrder($order);
 
         return response()->json([
             'success' => true,
@@ -145,6 +147,9 @@ class AdminController extends Controller
             $msg = "Order #{$order->order_number} rejected. Customer requested to re-upload proof.";
         }
 
+        // Sync to Supabase after verification/rejection
+        $order->refresh();
+        SupabaseService::syncOrder($order);
 
         return response()->json([
             'success' => true,

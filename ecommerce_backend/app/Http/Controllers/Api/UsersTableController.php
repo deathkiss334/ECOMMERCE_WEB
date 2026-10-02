@@ -4,7 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\UsersTable;
-use App\Services\FirebaseService;
+use App\Services\SupabaseService;
 use Illuminate\Http\Request;
 
 class UsersTableController extends Controller
@@ -37,12 +37,12 @@ class UsersTableController extends Controller
             $validated
         );
 
-        // Sync to Firebase Cloud Firestore
-        FirebaseService::syncUsersTable($user);
+        // Sync to Supabase
+        SupabaseService::syncUsersTable($user);
 
         return response()->json([
-            'message' => 'User saved successfully to Laravel DB and synced to Firebase',
-            'user' => $user,
+            'message' => 'User saved successfully to Supabase',
+            'user'    => $user,
         ], 201);
     }
 

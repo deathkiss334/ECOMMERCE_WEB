@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $table = 'orders';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'order_id';
 
     protected $fillable = [
         'id',
@@ -46,22 +46,22 @@ class Order extends Model
 
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['order_id'] ?? null;
+        return $this->attributes['order_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['order_id'] = $value;
     }
 
     public function getOrderIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['order_id'] ?? null;
+        return $this->attributes['order_id'] ?? null;
     }
 
     public function setOrderIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['order_id'] = $value;
     }
 
     public function getUserIdAttribute()
@@ -146,37 +146,37 @@ class Order extends Model
 
     public function customer()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function orderDetails()
     {
-        return $this->hasMany(OrderItem::class, 'order_id', 'id');
+        return $this->hasMany(OrderItem::class, 'order_id', 'order_id');
     }
 
     public function items()
     {
-        return $this->hasMany(OrderItem::class, 'order_id', 'id');
+        return $this->hasMany(OrderItem::class, 'order_id', 'order_id');
     }
 
     public function paymentRecord()
     {
-        return $this->hasOne(Payment::class, 'order_id', 'id');
+        return $this->hasOne(Payment::class, 'order_id', 'order_id');
     }
 
     public function payments()
     {
-        return $this->hasMany(Payment::class, 'order_id', 'id');
+        return $this->hasMany(Payment::class, 'order_id', 'order_id');
     }
 
     public function latestPayment()
     {
-        return $this->hasOne(Payment::class, 'order_id', 'id')->latestOfMany('created_at');
+        return $this->hasOne(Payment::class, 'order_id', 'order_id')->latestOfMany('created_at');
     }
 
     public function chats()

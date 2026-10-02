@@ -13,28 +13,21 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    protected $table = 'users';
-    protected $primaryKey = 'id';
+    protected $table = 'users_table';
+    protected $primaryKey = 'email_address';
+    public $incrementing = false;
+    protected $keyType = 'string';
 
     protected $fillable = [
-        'id',
-        'name',
-        'email',
-        'password_hash',
-        'phone',
-        'role',
-        'auth_provider',
-        'google_id',
-
-        // Compatibility fields
-        'user_id',
+        'email_address',
         'first_name',
         'last_name',
-        'birthday',
         'address',
-        'phone_num',
-        'email_address',
-        'password',
+        'phone_number',
+        'user_id',
+        'user_role',
+        'created_at',
+        'updated_at',
     ];
 
     protected $hidden = [
@@ -56,23 +49,21 @@ class User extends Authenticatable
     // Accessors & Mutators for ERD vs standard Laravel field compatibility
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+        return $this->attributes['user_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['user_id'] = $value;
     }
 
     public function getUserIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+        return $this->attributes['user_id'] ?? null;
     }
 
     public function setUserIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['user_id'] = $value;
     }
 
@@ -114,14 +105,24 @@ class User extends Authenticatable
         $this->attributes['last_name'] = $parts[1] ?? '';
     }
 
+    public function getRoleAttribute()
+    {
+        return $this->attributes['user_role'] ?? 'customer';
+    }
+
+    public function setRoleAttribute($value)
+    {
+        $this->attributes['user_role'] = $value;
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return ($this->role ?? 'customer') === 'admin';
     }
 
     public function isCustomer(): bool
     {
-        return $this->role === 'customer';
+        return ($this->role ?? 'customer') === 'customer';
     }
 
     public function toProfileArray(): array

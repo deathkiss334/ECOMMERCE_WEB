@@ -71,22 +71,26 @@ class UserModel {
     );
   }
 
-  /// Parse user profile returned from Laravel SQLite Auth API
+  /// Parse user profile returned from Laravel Auth API
   factory UserModel.fromBackendJson(Map<String, dynamic> json) {
     final name = (json['name'] ?? '').toString().trim();
     final parts = name.split(' ');
-    final first = parts.isNotEmpty ? parts.first : '';
-    final last = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    final first = (json['first_name'] != null && json['first_name'].toString().isNotEmpty)
+        ? json['first_name'].toString()
+        : (parts.isNotEmpty ? parts.first : '');
+    final last = (json['last_name'] != null && json['last_name'].toString().isNotEmpty)
+        ? json['last_name'].toString()
+        : (parts.length > 1 ? parts.sublist(1).join(' ') : '');
     final role = json['role'] ?? 'customer';
 
     return UserModel(
       firstName: first,
       secondName: last,
-      middleName: '',
-      birthday: '',
-      address: '',
-      phoneNumber: json['phone'] ?? '',
-      emailAddress: json['email'] ?? '',
+      middleName: json['middle_name'] ?? '',
+      birthday: json['birthday'] ?? '',
+      address: json['address'] ?? '',
+      phoneNumber: json['phone_number'] ?? json['phone'] ?? '',
+      emailAddress: json['email_address'] ?? json['email'] ?? '',
       isVerified: true,
       isAdmin: role == 'admin',
       authProvider: json['auth_provider'] ?? 'local',

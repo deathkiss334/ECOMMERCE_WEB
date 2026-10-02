@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Review extends Model
 {
     protected $table = 'reviews';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'review_id';
 
     protected $fillable = [
         'id',
@@ -27,23 +27,21 @@ class Review extends Model
 
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['review_id'] ?? null;
+        return $this->attributes['review_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['review_id'] = $value;
     }
 
     public function getReviewIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['review_id'] ?? null;
+        return $this->attributes['review_id'] ?? null;
     }
 
     public function setReviewIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['review_id'] = $value;
     }
 
@@ -115,21 +113,21 @@ class Review extends Model
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
+        return $this->belongsTo(Product::class, 'product_id', 'product_id');
     }
 
     public function user()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function reviewer()
     {
-        return $this->belongsTo(User::class, 'user_id', 'id');
+        return $this->belongsTo(User::class, 'user_id', 'user_id');
     }
 
     public function reviewee()
     {
-        return $this->belongsTo(User::class, 'reviewee_id', 'id');
+        return $this->belongsTo(User::class, 'reviewee_id', 'user_id');
     }
 }

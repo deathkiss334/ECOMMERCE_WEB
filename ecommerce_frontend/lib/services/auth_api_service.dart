@@ -7,11 +7,13 @@ class AuthResult {
   final String token;
   final UserModel user;
   final String role;
+  final bool needsProfileCompletion;
 
   AuthResult({
     required this.token,
     required this.user,
     required this.role,
+    this.needsProfileCompletion = false,
   });
 }
 
@@ -120,11 +122,25 @@ class AuthApiService {
   }
 
   /// Google OAuth 2.0 Sign In (Zero Firebase)
-  static Future<AuthResult> loginWithGoogle(String idToken) async {
+  static Future<AuthResult> loginWithGoogle(
+    String idToken, {
+    String? address,
+    String? phone,
+    String? firstName,
+    String? lastName,
+  }) async {
+    final body = <String, dynamic>{
+      'id_token': idToken,
+    };
+    if (address != null && address.isNotEmpty) body['address'] = address;
+    if (phone != null && phone.isNotEmpty) body['phone'] = phone;
+    if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
+    if (lastName != null && lastName.isNotEmpty) body['last_name'] = lastName;
+
     final response = await http.post(
       Uri.parse('$baseUrl/auth/google'),
       headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
-      body: json.encode({'id_token': idToken}),
+      body: json.encode(body),
     );
 
     final data = json.decode(response.body);
@@ -141,6 +157,7 @@ class AuthApiService {
         token: token,
         user: user,
         role: userData['role'] ?? 'customer',
+        needsProfileCompletion: userData['needs_profile_completion'] == true,
       );
     } else {
       throw Exception(data['message'] ?? 'Google authentication failed.');

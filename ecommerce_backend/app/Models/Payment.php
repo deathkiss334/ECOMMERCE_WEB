@@ -8,7 +8,7 @@ use Illuminate\Support\Str;
 class Payment extends Model
 {
     protected $table = 'payments';
-    protected $primaryKey = 'id';
+    protected $primaryKey = 'payment_id';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -22,35 +22,40 @@ class Payment extends Model
         'currency',
         'status',
         'metadata',
+
+        // Compatibility fields
+        'payment_id',
+        'transaction_id',
+        'payment_status',
     ];
 
     protected static function booted()
     {
         static::creating(function ($payment) {
-            if (empty($payment->id)) {
-                $payment->id = (string) Str::uuid();
+            if (empty($payment->payment_id)) {
+                $payment->payment_id = !empty($payment->id) ? (string) $payment->id : (string) Str::uuid();
             }
         });
     }
 
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? null;
+        return $this->attributes['payment_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['payment_id'] = $value;
     }
 
     public function getPaymentIdAttribute()
     {
-        return $this->attributes['id'] ?? null;
+        return $this->attributes['payment_id'] ?? null;
     }
 
     public function setPaymentIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['payment_id'] = $value;
     }
 
     public function getStatusAttribute()
@@ -75,11 +80,11 @@ class Payment extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'id');
+        return $this->belongsTo(Order::class, 'order_id', 'order_id');
     }
 
     public function transactions()
     {
-        return $this->hasMany(PaymentTransaction::class, 'payment_id', 'id');
+        return $this->hasMany(PaymentTransaction::class, 'payment_id', 'payment_id');
     }
 }
