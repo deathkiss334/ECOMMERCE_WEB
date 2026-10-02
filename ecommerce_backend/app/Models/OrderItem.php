@@ -29,22 +29,22 @@ class OrderItem extends Model
 
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['od_id'] ?? null;
+        return $this->attributes['od_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['od_id'] = $value;
     }
 
     public function getOdIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['od_id'] ?? null;
+        return $this->attributes['od_id'] ?? null;
     }
 
     public function setOdIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['od_id'] = $value;
     }
 
     public function getTotalPriceAttribute()
@@ -89,12 +89,12 @@ class OrderItem extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'id');
+        return $this->belongsTo(Order::class, 'order_id', 'order_id');
     }
 
     public function product()
     {
-        return $this->belongsTo(Product::class, 'product_id', 'id');
+        return $this->belongsTo(Product::class, 'product_id', 'product_id');
     }
 
     public function productVariant()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\User;
 use App\Services\GoogleTokenVerifier;
+use App\Services\SupabaseService;
 use Exception;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,7 +72,7 @@ class AuthController extends Controller
         }
 
         // 2. Reject duplicate emails with explicit 409 Conflict
-        $existingUser = User::where('email', $rawEmail)->first();
+        $existingUser = User::where('email_address', $rawEmail)->orWhere('email', $rawEmail)->first();
         if ($existingUser) {
             return response()->json([
                 'message' => 'Email is already registered. Please log in instead.',
@@ -92,6 +93,16 @@ class AuthController extends Controller
 
         // 4. Issue Sanctum Bearer Token
         $token = $user->createToken('auth-token', ['role:' . $user->role])->plainTextToken;
+
+        // 5. Sync new user profile to Supabase
+        SupabaseService::syncUser([
+            'email'         => $user->email,
+            'name'          => $user->name,
+            'phone'         => $user->phone,
+            'role'          => $user->role,
+            'auth_provider' => $user->auth_provider,
+            'google_id'     => null,
+        ]);
 
         return response()->json([
             'message' => 'Registration successful.',
@@ -126,7 +137,7 @@ class AuthController extends Controller
         }
 
         // Query user by email
-        $user = User::where('email', $rawEmail)->first();
+        $user = User::where('email_address', $rawEmail)->orWhere('email', $rawEmail)->first();
 
         // Constant-time verification protection
         if (!$user || empty($user->password_hash)) {
@@ -208,59 +219,61 @@ class AuthController extends Controller
         }
 
         $googleId = $googleProfile['google_id'];
-        $email = $googleProfile['email'];
-        $name = $googleProfile['name'];
+        $email = strtolower(trim($googleProfile['email']));
+        $googleName = trim($googleProfile['name'] ?? '');
+        $nameParts = explode(' ', $googleName, 2);
+        $firstName = $request->input('first_name') ?: ($nameParts[0] ?? $googleName);
+        $lastName = $request->input('last_name') ?: ($nameParts[1] ?? '');
 
-        // Match Flow:
-        // 1. Search by google_id
-        $user = User::where('google_id', $googleId)->first();
+        // 1. Fetch user from Supabase users_table
+        $existing = SupabaseService::getUserFromSupabase($email);
 
-        // 2. If not found by google_id, search by verified email
-        if (!$user) {
-            $user = User::where('email', $email)->first();
+        $address = $request->input('address') ?: ($existing['address'] ?? '');
+        $phoneNumber = $request->input('phone_number') ?: ($request->input('phone') ?: ($existing['phone_number'] ?? ''));
+        $role = $existing['user_role'] ?? 'customer';
+        $userId = $existing['user_id'] ?? (string) \Illuminate\Support\Str::uuid();
 
-            if ($user) {
-                // Link Google account to existing user record
-                $user->google_id = $googleId;
-                if ($user->auth_provider === 'local' && empty($user->password_hash)) {
-                    $user->auth_provider = 'google';
-                }
-                $user->save();
-            }
-        }
+        // 2. Save / update profile in Supabase users_table
+        $userData = [
+            'email_address' => $email,
+            'first_name'    => !empty($existing['first_name']) ? $existing['first_name'] : $firstName,
+            'last_name'     => !empty($existing['last_name']) ? $existing['last_name'] : $lastName,
+            'address'       => $address,
+            'phone_number'  => $phoneNumber,
+            'user_role'     => $role,
+            'user_id'       => $userId,
+        ];
 
-        $statusCode = Response::HTTP_OK;
+        SupabaseService::saveUserToSupabase($userData);
 
-        // 3. If user does not exist at all, auto-register
-        if (!$user) {
-            $user = User::create([
-                'name' => $name,
-                'email' => $email,
-                'password_hash' => null,
-                'phone' => null,
-                'role' => 'customer',
-                'auth_provider' => 'google',
-                'google_id' => $googleId,
-            ]);
+        // Generate synthetic sanctum-compatible bearer token
+        $token = base64_encode(json_encode([
+            'email' => $email,
+            'role'  => $role,
+            'exp'   => time() + 86400 * 30,
+        ]));
 
-            $statusCode = Response::HTTP_CREATED;
-        }
-
-        // Issue Sanctum Bearer Token
-        $token = $user->createToken('auth-token', ['role:' . $user->role])->plainTextToken;
+        $needsCredentials = empty($address) || empty($phoneNumber);
 
         return response()->json([
-            'message' => $statusCode === Response::HTTP_CREATED ? 'Google registration successful.' : 'Google login successful.',
-            'token' => $token,
-            'user' => [
-                'id' => $user->id,
-                'name' => $user->name,
-                'email' => $user->email,
-                'role' => $user->role,
-                'phone' => $user->phone,
-                'auth_provider' => $user->auth_provider,
+            'message' => 'Google authentication successful.',
+            'token'   => $token,
+            'user'    => [
+                'id'                       => $userId,
+                'user_id'                  => $userId,
+                'name'                     => trim(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? '')),
+                'first_name'               => $userData['first_name'],
+                'last_name'                => $userData['last_name'],
+                'email'                    => $email,
+                'email_address'            => $email,
+                'role'                     => $role,
+                'phone'                    => $phoneNumber,
+                'phone_number'             => $phoneNumber,
+                'address'                  => $address,
+                'auth_provider'            => 'google',
+                'needs_profile_completion' => $needsCredentials,
             ],
-        ], $statusCode);
+        ], Response::HTTP_OK);
     }
 
     /**

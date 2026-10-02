@@ -1,14 +1,15 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
+/**
+ * This migration was originally a SQLite-specific table rebuild.
+ * Replaced with a no-op since we are now on Supabase PostgreSQL
+ * and the users table is created correctly in the base migration.
+ */
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         if (!Schema::hasTable('users')) {
@@ -59,5 +60,6 @@ return new class extends Migration
      */
     public function down(): void
     {
+        //
     }
 };

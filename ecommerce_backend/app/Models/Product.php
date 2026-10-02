@@ -34,22 +34,22 @@ class Product extends Model
 
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['product_id'] ?? null;
+        return $this->attributes['product_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['product_id'] = $value;
     }
 
     public function getProductIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['product_id'] ?? null;
+        return $this->attributes['product_id'] ?? null;
     }
 
     public function setProductIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
+        $this->attributes['product_id'] = $value;
     }
 
     public function getNameAttribute()
@@ -99,16 +99,16 @@ class Product extends Model
 
     public function variants()
     {
-        return $this->hasMany(ProductVariant::class, 'product_id', 'id');
+        return $this->hasMany(ProductVariant::class, 'product_id', 'product_id');
     }
 
     public function images()
     {
-        return $this->hasMany(ProductImage::class, 'product_id', 'id');
+        return $this->hasMany(ProductImage::class, 'product_id', 'product_id');
     }
 
     public function reviews()
     {
-        return $this->hasMany(Review::class, 'product_id', 'id');
+        return $this->hasMany(Review::class, 'product_id', 'product_id');
     }
 }

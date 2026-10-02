@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\PaymentTransaction;
+use App\Services\SupabaseService;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Str;
 
@@ -68,16 +69,19 @@ class QrPaymentController extends Controller
         ]);
 
         PaymentTransaction::create([
-            'payment_id' => $order->latestPayment->id ?? $order->id,
-            'event_name' => 'gcash.receipt.uploaded',
+            'payment_id'          => $order->latestPayment->id ?? $order->id,
+            'event_name'          => 'gcash.receipt.uploaded',
             'raw_webhook_payload' => json_encode([
-                'order_number' => $order->order_number,
-                'reference_number' => $refNumber,
-                'receipt_url' => $receiptUrl,
-                'amount' => $order->total_amount,
-                'submitted_at' => now()->toIso8601String(),
+                'order_number'    => $order->order_number,
+                'reference_number'=> $refNumber,
+                'receipt_url'     => $receiptUrl,
+                'amount'          => $order->total_amount,
+                'submitted_at'    => now()->toIso8601String(),
             ]),
         ]);
+
+        // Notify admin dashboard in real-time via Supabase
+        SupabaseService::syncOrder($order->fresh()->load(['items', 'latestPayment']));
 
         return response()->json([
             'success' => true,

@@ -79,11 +79,11 @@ class Payment extends Model
 
     public function order()
     {
-        return $this->belongsTo(Order::class, 'order_id', 'id');
+        return $this->belongsTo(Order::class, 'order_id', 'order_id');
     }
 
     public function transactions()
     {
-        return $this->hasMany(PaymentTransaction::class, 'payment_id', 'id');
+        return $this->hasMany(PaymentTransaction::class, 'payment_id', 'payment_id');
     }
 }

@@ -7,7 +7,7 @@ use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentTransaction;
-use App\Services\FirebaseService;
+use App\Services\SupabaseService;
 use Illuminate\Support\Facades\Log;
 
 class WebhookController extends Controller
@@ -40,7 +40,7 @@ class WebhookController extends Controller
                     'payment_status' => 'paid',
                 ]);
 
-                FirebaseService::syncOrder($payment->order);
+                SupabaseService::syncOrder($payment->order);
             }
         }
 

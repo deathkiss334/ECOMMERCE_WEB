@@ -11,15 +11,15 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ProductVariant;
-use App\Services\FirebaseService;
+use App\Services\SupabaseService;
 
 class CheckoutController extends Controller
 {
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'items' => 'required|array',
-            'items.*.id' => 'required|exists:product_variants,id',
+            'items' => 'required|array|min:1',
+            'items.*.id' => 'required',
             'items.*.qty' => 'required|integer|min:1',
             'payment_method' => 'required|string',
             'customer_name' => 'required|string|max:120',
@@ -37,19 +37,41 @@ class CheckoutController extends Controller
             $totalAmount = 0;
             $orderItems = [];
 
-            // 1. Calculate total securely from the database
+            // 1. Calculate total securely from the database (supporting both variant ID and product ID)
             foreach ($validated['items'] as $item) {
-                $variant = ProductVariant::with('product')->findOrFail($item['id']);
-                $price = $variant->price ?? $variant->product->base_price;
-                $lineTotal = $price * $item['qty'];
+                $variant = ProductVariant::with('product')->find($item['id']);
+                if ($variant) {
+                    $product = $variant->product;
+                    $price = (float) ($variant->price ?? ($product ? $product->base_price : 0));
+                    $variantId = $variant->id;
+                    $prodName = $product ? ($product->name ?? $product->product_name) : ($item['name'] ?? 'Menu Item');
+                    $varName = $variant->name ?? 'Standard';
+                } else {
+                    $product = \App\Models\Product::with('variants')->find($item['id']);
+                    if ($product) {
+                        $firstVariant = $product->variants->first();
+                        $price = (float) ($firstVariant ? ($firstVariant->price ?? ($product->base_price ?? $product->product_price)) : ($product->base_price ?? $product->product_price));
+                        $variantId = $firstVariant ? $firstVariant->id : null;
+                        $prodName = $product->name ?? $product->product_name ?? 'Menu Item';
+                        $varName = $firstVariant ? $firstVariant->name : 'Standard';
+                    } else {
+                        $price = (float) ($item['price'] ?? 140.00);
+                        $variantId = null;
+                        $prodName = $item['name'] ?? ('Item #' . $item['id']);
+                        $varName = 'Standard';
+                    }
+                }
+
+                $qty = (int) $item['qty'];
+                $lineTotal = $price * $qty;
                 $totalAmount += $lineTotal;
 
                 $orderItems[] = [
-                    'product_variant_id' => $variant->id,
-                    'product_name_snapshot' => $variant->product->name,
-                    'variant_name_snapshot' => $variant->name,
+                    'product_variant_id' => $variantId,
+                    'product_name_snapshot' => $prodName,
+                    'variant_name_snapshot' => $varName,
                     'unit_price' => $price,
-                    'quantity' => $item['qty'],
+                    'quantity' => $qty,
                     'total_price' => $lineTotal,
                 ];
             }
@@ -76,14 +98,14 @@ class CheckoutController extends Controller
 
             // 3. Attach Items to Order
             foreach ($orderItems as $oi) {
-                $oi['order_id'] = $order->id;
+                $oi['order_id'] = $order->order_id ?? $order->id;
                 OrderItem::create($oi);
             }
 
             // 4. Create Initial Payment Record
             $payment = Payment::create([
-                'id' => (string) Str::uuid(),
-                'order_id' => $order->id,
+                'payment_id' => (string) Str::uuid(),
+                'order_id' => $order->order_id ?? $order->id,
                 'payment_method' => $validated['payment_method'],
                 'gateway' => $validated['payment_method'] === 'cod' ? 'cod' : 'gcash_manual',
                 'amount' => $totalAmount,
@@ -92,7 +114,7 @@ class CheckoutController extends Controller
 
             // 5A. Handle Cash On Delivery
             if ($validated['payment_method'] === 'cod') {
-                FirebaseService::syncOrder($order);
+                SupabaseService::syncOrder($order);
                 return response()->json([
                     'success' => true,
                     'orderId' => $order->order_number,
@@ -109,7 +131,7 @@ class CheckoutController extends Controller
             // 5B. Manual GCash QR Payment
             $qrImageUrl = asset('assets/gcash_qr.png');
 
-            FirebaseService::syncOrder($order);
+            SupabaseService::syncOrder($order);
 
             return response()->json([
                 'success' => true,

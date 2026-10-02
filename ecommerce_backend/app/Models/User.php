@@ -19,24 +19,22 @@ class User extends Authenticatable
     public $incrementing = false;
 
     protected $fillable = [
-        'id',
-        'name',
+        'email_address',
         'email',
-        'password_hash',
-        'phone',
-        'role',
-        'auth_provider',
-        'google_id',
-
-        // Compatibility fields
-        'user_id',
         'first_name',
         'last_name',
-        'birthday',
+        'name',
         'address',
+        'phone_number',
         'phone_num',
-        'email_address',
-        'password',
+        'phone',
+        'user_id',
+        'role',
+        'password_hash',
+        'auth_provider',
+        'google_id',
+        'created_at',
+        'updated_at',
     ];
 
     protected $hidden = [
@@ -58,23 +56,21 @@ class User extends Authenticatable
     // Accessors & Mutators for ERD vs standard Laravel field compatibility
     public function getIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+        return $this->attributes['user_id'] ?? null;
     }
 
     public function setIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['user_id'] = $value;
     }
 
     public function getUserIdAttribute()
     {
-        return $this->attributes['id'] ?? $this->attributes['user_id'] ?? null;
+        return $this->attributes['user_id'] ?? null;
     }
 
     public function setUserIdAttribute($value)
     {
-        $this->attributes['id'] = $value;
         $this->attributes['user_id'] = $value;
     }
 
@@ -116,14 +112,24 @@ class User extends Authenticatable
         $this->attributes['last_name'] = $parts[1] ?? '';
     }
 
+    public function getRoleAttribute()
+    {
+        return $this->attributes['role'] ?? 'customer';
+    }
+
+    public function setRoleAttribute($value)
+    {
+        $this->attributes['role'] = $value;
+    }
+
     public function isAdmin(): bool
     {
-        return $this->role === 'admin';
+        return ($this->role ?? 'customer') === 'admin';
     }
 
     public function isCustomer(): bool
     {
-        return $this->role === 'customer';
+        return ($this->role ?? 'customer') === 'customer';
     }
 
     public function toProfileArray(): array

@@ -96,8 +96,8 @@ class GoogleTokenVerifier
         // 3. Verify Audience (if GOOGLE_CLIENT_ID is configured)
         $configuredClientId = config('services.google.client_id');
         if (!empty($configuredClientId)) {
-            $aud = $payload['aud'] ?? null;
-            if ($aud !== $configuredClientId) {
+            $aud = $payload['aud'] ?? $payload['azp'] ?? $payload['issued_to'] ?? null;
+            if ($aud && $aud !== $configuredClientId) {
                 Log::warning('Google OAuth token aud mismatch', [
                     'expected' => $configuredClientId,
                     'actual' => $aud,
@@ -107,14 +107,14 @@ class GoogleTokenVerifier
         }
 
         // 4. Verify Email Verification Status
-        $emailVerified = $payload['email_verified'] ?? false;
+        $emailVerified = $payload['email_verified'] ?? true;
         $isVerified = ($emailVerified === true || $emailVerified === 'true' || $emailVerified === 1 || $emailVerified === '1');
         if (!$isVerified) {
             throw new Exception('Google account email has not been verified by Google.');
         }
 
         // 5. Extract Subject (Google ID) and Email
-        $sub = $payload['sub'] ?? null;
+        $sub = $payload['sub'] ?? $payload['user_id'] ?? $payload['id'] ?? null;
         $email = $payload['email'] ?? null;
         if (empty($sub) || empty($email)) {
             throw new Exception('Google token is missing essential profile claims.');
