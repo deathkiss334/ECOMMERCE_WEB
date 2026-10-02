@@ -51,7 +51,7 @@ Route::get('/admin/orders-list', [AdminController::class, 'orders']);
 
 // ── E-Commerce Catalog API Endpoints ──────────────────────────────────────────
 Route::get('/categories', function () {
-    return Category::where('is_active', true)->get();
+    return Category::whereRaw('is_active IS TRUE')->get();
 });
 
 Route::get('/products', [ProductTableController::class, 'catalog']);
@@ -69,10 +69,11 @@ Route::post('/payments/qr-confirm', [QrPaymentController::class, 'confirm']);
 // ── Customer Order History & Real-Time Tracking ───────────────────────────────
 Route::get('/orders', [OrderHistoryController::class, 'index']);
 Route::get('/orders/track/{order_number}', function ($order_number) {
-    return Order::with(['items', 'latestPayment'])
-        ->where('order_number', $order_number)
-        ->orWhere('id', $order_number)
-        ->firstOrFail();
+    $order = \App\Services\OrderService::findOrder($order_number);
+    if (!$order) {
+        abort(404, 'Order not found');
+    }
+    return response()->json($order);
 });
 Route::post('/orders/reviews', [OrderHistoryController::class, 'storeReview']);
 

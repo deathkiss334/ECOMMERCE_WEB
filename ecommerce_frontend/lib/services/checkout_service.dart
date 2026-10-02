@@ -66,6 +66,8 @@ class CheckoutService {
         request.fields['gcash_ref_number'] = gcashRefNumber.trim();
       }
 
+      request.fields['receipt_base64'] = base64Encode(imageBytes);
+
       request.files.add(
         http.MultipartFile.fromBytes(
           'receipt',

@@ -4,88 +4,106 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Order;
-use App\Models\Review;
+use App\Services\OrderService;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class OrderHistoryController extends Controller
 {
+    /**
+     * GET /api/orders
+     * Return orders list for tracking / history.
+     */
     public function index(Request $request)
     {
-        $user = $request->user('sanctum');
-        $query = Order::with(['items', 'latestPayment'])->orderBy('created_at', 'desc');
+        $orderNumbers = $request->query('order_numbers');
+        $email = $request->query('email');
+        $phone = $request->query('phone');
+        $status = $request->query('status');
 
-        if ($user && ($user->role ?? '') !== 'guest') {
-            $query->where('user_id', $user->id);
-        } else {
-            // For guest devices, strictly limit orders to those placed on this device
-            $orderNumbers = $request->query('order_numbers');
-            $email = $request->query('email');
-
-            if ($orderNumbers && trim($orderNumbers) !== '') {
-                $numbers = array_values(array_filter(array_map('trim', explode(',', $orderNumbers))));
-                if (!empty($numbers)) {
-                    $query->whereIn('order_number', $numbers);
-                } else {
-                    return response()->json([]);
-                }
-            } elseif ($email && trim($email) !== '' && !str_contains(strtolower($email), 'guest')) {
-                $query->where('customer_email', trim($email));
-            } else {
-                // Other devices or new guests with no local order history see 0 orders
-                return response()->json([]);
-            }
+        $numbersList = null;
+        if ($orderNumbers && trim($orderNumbers) !== '') {
+            $numbersList = array_values(array_filter(array_map('trim', explode(',', $orderNumbers))));
         }
 
-        return response()->json($query->get());
-    }
+        $orders = OrderService::listOrders($email, $numbersList, $phone, $status);
 
-    public function storeReview(Request $request)
-    {
-        $request->validate([
-            'order_id' => 'required|exists:orders,id',
-            'product_id' => 'required', // Intentionally soft validation to bypass mapping variant-to-product complexity in demo
-            'rating' => 'required|integer|min:1|max:5',
-            'comment' => 'nullable|string'
-        ]);
-
-        Review::create([
-            'user_id' => 1,
-            'product_id' => 1, // Static fallback for live demo if actual product parsing errors out
-            'rating' => $request->rating,
-            'comment' => $request->comment ?? 'Left via Mobile App'
-        ]);
-
-        return response()->json(['success' => true, 'message' => 'Review successfully submitted']);
+        return response()->json($orders);
     }
 
     /**
      * GET /api/orders/:orderId/status
-     * Returns current order status, total amount, and receipt details for customer tracking.
      */
     public function orderStatus(string $orderId)
     {
-        $order = Order::with(['items', 'latestPayment'])
-            ->where('order_number', $orderId)
-            ->orWhere('id', $orderId)
-            ->firstOrFail();
+        $order = OrderService::findOrder($orderId);
+
+        if (!$order) {
+            abort(404, 'Order not found');
+        }
 
         return response()->json([
-            'orderId' => $order->order_number,
-            'id' => $order->id,
-            'userId' => $order->user_id,
-            'totalAmount' => (float) $order->total_amount,
-            'total_amount' => (float) $order->total_amount,
-            'status' => strtoupper($order->status),
-            'payment_status' => $order->payment_status,
-            'gcashRefNumber' => $order->gcash_ref_number ?? $order->latestPayment->gateway_reference_id ?? null,
-            'gcash_ref_number' => $order->gcash_ref_number ?? $order->latestPayment->gateway_reference_id ?? null,
-            'receiptImageUrl' => $order->receipt_image_url,
-            'receipt_image_url' => $order->receipt_image_url,
-            'adminNotes' => $order->admin_notes,
-            'admin_notes' => $order->admin_notes,
-            'createdAt' => $order->created_at,
-            'verifiedAt' => $order->verified_at,
-            'items' => $order->items,
+            'orderId' => $order['order_number'],
+            'order_number' => $order['order_number'],
+            'order_id' => $order['order_id'],
+            'id' => $order['id'] ?? 1,
+            'userId' => $order['user_id'] ?? null,
+            'totalAmount' => (float) $order['total_amount'],
+            'total_amount' => (float) $order['total_amount'],
+            'status' => strtoupper($order['status']),
+            'payment_status' => $order['payment_status'] ?? 'unpaid',
+            'gcashRefNumber' => $order['gcash_ref_number'] ?? null,
+            'gcash_ref_number' => $order['gcash_ref_number'] ?? null,
+            'receiptImageUrl' => $order['receipt_image_url'] ?? null,
+            'receipt_image_url' => $order['receipt_image_url'] ?? null,
+            'adminNotes' => $order['admin_notes'] ?? null,
+            'admin_notes' => $order['admin_notes'] ?? null,
+            'rejectionReason' => $order['rejection_reason'] ?? null,
+            'rejection_reason' => $order['rejection_reason'] ?? null,
+            'lalamove_tracking_url' => $order['lalamove_tracking_url'] ?? null,
+            'createdAt' => $order['created_at'] ?? now()->toIso8601String(),
+            'created_at' => $order['created_at'] ?? now()->toIso8601String(),
+            'verifiedAt' => $order['verified_at'] ?? null,
+            'verified_at' => $order['verified_at'] ?? null,
+            'items' => $order['items'] ?? [],
+        ]);
+    }
+
+    /**
+     * POST /api/orders/reviews
+     * Store review in review_tbl.
+     */
+    public function storeReview(Request $request)
+    {
+        $validated = $request->validate([
+            'order_id' => 'required',
+            'rating' => 'required|integer|min:1|max:5',
+            'comment' => 'nullable|string',
+            'review_desc' => 'nullable|string',
+            'product_id' => 'nullable',
+        ]);
+
+        $orderId = (string) $validated['order_id'];
+        $order = OrderService::findOrder($orderId);
+        $orderKey = $order ? $order['order_number'] : $orderId;
+
+        $rawUserId = $order['user_id'] ?? auth('sanctum')->id() ?? null;
+        $userId = ($rawUserId && is_numeric($rawUserId)) ? (int) $rawUserId : null;
+        $feedback = $validated['comment'] ?? $validated['review_desc'] ?? 'Delicious food and great service!';
+
+        $review = \App\Models\OrderReview::updateOrCreate(
+            ['order_id' => $orderKey],
+            [
+                'user_id' => $userId,
+                'rating' => (int) $validated['rating'],
+                'feedback' => $feedback,
+            ]
+        );
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Review successfully submitted!',
+            'review' => $review,
         ]);
     }
 }

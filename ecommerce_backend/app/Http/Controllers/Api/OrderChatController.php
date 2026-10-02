@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\OrderChat;
+use App\Services\OrderService;
 use Illuminate\Http\Request;
 
 class OrderChatController extends Controller
@@ -14,11 +14,8 @@ class OrderChatController extends Controller
      */
     public function index($orderId)
     {
-        $order = Order::where('order_number', $orderId)
-            ->orWhere('id', $orderId)
-            ->first();
-
-        $orderKey = $order ? $order->order_number : $orderId;
+        $order = OrderService::findOrder((string) $orderId);
+        $orderKey = $order ? $order['order_number'] : $orderId;
 
         $messages = OrderChat::where('order_id', $orderKey)
             ->orWhere('order_id', (string) $orderId)
@@ -38,16 +35,13 @@ class OrderChatController extends Controller
     public function store(Request $request, $orderId)
     {
         $validated = $request->validate([
-            'sender_role' => 'required|string|in:customer,admin,Customer,Admin',
+            'sender_role' => 'required|string',
             'sender_name' => 'required|string|max:100',
             'message' => 'required|string|max:2000',
         ]);
 
-        $order = Order::where('order_number', $orderId)
-            ->orWhere('id', $orderId)
-            ->first();
-
-        $orderKey = $order ? $order->order_number : $orderId;
+        $order = OrderService::findOrder((string) $orderId);
+        $orderKey = $order ? $order['order_number'] : $orderId;
 
         $chat = OrderChat::create([
             'order_id' => $orderKey,

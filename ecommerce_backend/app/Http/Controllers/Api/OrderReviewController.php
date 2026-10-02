@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Models\Order;
 use App\Models\OrderReview;
+use App\Services\OrderService;
 use Illuminate\Http\Request;
 
 class OrderReviewController extends Controller
@@ -17,22 +17,22 @@ class OrderReviewController extends Controller
         $validated = $request->validate([
             'rating' => 'required|integer|min:1|max:5',
             'feedback' => 'nullable|string|max:1000',
-            'user_id' => 'nullable|integer',
+            'comment' => 'nullable|string|max:1000',
+            'user_id' => 'nullable',
         ]);
 
-        $order = Order::where('order_number', $orderId)
-            ->orWhere('id', $orderId)
-            ->firstOrFail();
-
-        $orderKey = $order->order_number;
-        $userId = $validated['user_id'] ?? auth('sanctum')->id() ?? $order->user_id ?? 1;
+        $order = OrderService::findOrder((string) $orderId);
+        $orderKey = $order ? $order['order_number'] : $orderId;
+        $rawUserId = $order['user_id'] ?? auth('sanctum')->id() ?? null;
+        $userId = ($rawUserId && is_numeric($rawUserId)) ? (int) $rawUserId : null;
+        $feedback = $validated['feedback'] ?? $validated['comment'] ?? 'Great food and fast delivery!';
 
         $review = OrderReview::updateOrCreate(
             ['order_id' => $orderKey],
             [
                 'user_id' => $userId,
-                'rating' => $validated['rating'],
-                'feedback' => $validated['feedback'] ?? null,
+                'rating' => (int) $validated['rating'],
+                'feedback' => $feedback,
             ]
         );
 
@@ -48,15 +48,10 @@ class OrderReviewController extends Controller
      */
     public function show($orderId)
     {
-        $order = Order::where('order_number', $orderId)
-            ->orWhere('id', $orderId)
-            ->first();
+        $order = OrderService::findOrder((string) $orderId);
+        $orderKey = $order ? $order['order_number'] : $orderId;
 
-        $orderKey = $order ? $order->order_number : $orderId;
-
-        $review = OrderReview::where('order_id', $orderKey)
-            ->orWhere('order_id', (string) $orderId)
-            ->first();
+        $review = OrderReview::where('order_id', $orderKey)->first();
 
         return response()->json([
             'success' => true,

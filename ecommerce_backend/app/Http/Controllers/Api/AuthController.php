@@ -225,32 +225,81 @@ class AuthController extends Controller
         $firstName = $request->input('first_name') ?: ($nameParts[0] ?? $googleName);
         $lastName = $request->input('last_name') ?: ($nameParts[1] ?? '');
 
-        // 1. Fetch user from Supabase users_table
-        $existing = SupabaseService::getUserFromSupabase($email);
+        // 1. Fetch user from PostgreSQL `users` table
+        $dbUser = \Illuminate\Support\Facades\DB::table('users')->where(function($q) use ($email) {
+            $q->where('email', $email)->orWhere('email_address', $email);
+        })->first();
 
-        $address = $request->input('address') ?: ($existing['address'] ?? '');
-        $phoneNumber = $request->input('phone_number') ?: ($request->input('phone') ?: ($existing['phone_number'] ?? ''));
-        $role = $existing['user_role'] ?? 'customer';
-        $userId = $existing['user_id'] ?? (string) \Illuminate\Support\Str::uuid();
+        // Also check Supabase REST as auxiliary
+        $existing = null;
+        try {
+            $existing = SupabaseService::getUserFromSupabase($email);
+        } catch (\Throwable $e) {}
 
-        // 2. Save / update profile in Supabase users_table
+        $address = $request->input('address') 
+            ?: ($dbUser->address ?? ($existing['address'] ?? ''));
+        $phoneNumber = $request->input('phone_number') 
+            ?: ($request->input('phone') ?: ($dbUser->phone ?? ($dbUser->phone_num ?? ($existing['phone_number'] ?? ''))));
+        
+        $firstName = $request->input('first_name') ?: ($dbUser->first_name ?? ($existing['first_name'] ?? ($nameParts[0] ?? $googleName)));
+        $lastName = $request->input('last_name') ?: ($dbUser->last_name ?? ($existing['last_name'] ?? ($nameParts[1] ?? '')));
+        $role = $dbUser->role ?? ($existing['user_role'] ?? 'customer');
+        $userId = $dbUser->user_id ?? ($existing['user_id'] ?? null);
+
+        // 2. Persist to PostgreSQL `users` table
+        $fullName = trim("$firstName $lastName");
+        if ($dbUser) {
+            $userId = $dbUser->user_id;
+            \Illuminate\Support\Facades\DB::table('users')->where('user_id', $dbUser->user_id)->update([
+                'name' => $fullName,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'address' => $address,
+                'phone' => $phoneNumber,
+                'phone_num' => $phoneNumber,
+                'auth_provider' => 'google',
+                'google_id' => $googleId,
+                'updated_at' => now(),
+            ]);
+        } else {
+            $insertedId = \Illuminate\Support\Facades\DB::table('users')->insertGetId([
+                'name' => $fullName,
+                'first_name' => $firstName,
+                'last_name' => $lastName,
+                'email' => $email,
+                'email_address' => $email,
+                'address' => $address,
+                'phone' => $phoneNumber,
+                'phone_num' => $phoneNumber,
+                'role' => $role,
+                'auth_provider' => 'google',
+                'google_id' => $googleId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], 'user_id');
+            $userId = $insertedId;
+        }
+
+        // 3. Also sync to Supabase
         $userData = [
             'email_address' => $email,
-            'first_name'    => !empty($existing['first_name']) ? $existing['first_name'] : $firstName,
-            'last_name'     => !empty($existing['last_name']) ? $existing['last_name'] : $lastName,
+            'first_name'    => $firstName,
+            'last_name'     => $lastName,
             'address'       => $address,
             'phone_number'  => $phoneNumber,
             'user_role'     => $role,
-            'user_id'       => $userId,
+            'user_id'       => (string) $userId,
         ];
-
-        SupabaseService::saveUserToSupabase($userData);
+        try {
+            SupabaseService::saveUserToSupabase($userData);
+        } catch (\Throwable $e) {}
 
         // Generate synthetic sanctum-compatible bearer token
         $token = base64_encode(json_encode([
-            'email' => $email,
-            'role'  => $role,
-            'exp'   => time() + 86400 * 30,
+            'email'   => $email,
+            'role'    => $role,
+            'user_id' => $userId,
+            'exp'     => time() + 86400 * 30,
         ]));
 
         $needsCredentials = empty($address) || empty($phoneNumber);
@@ -259,11 +308,11 @@ class AuthController extends Controller
             'message' => 'Google authentication successful.',
             'token'   => $token,
             'user'    => [
-                'id'                       => $userId,
-                'user_id'                  => $userId,
-                'name'                     => trim(($userData['first_name'] ?? '') . ' ' . ($userData['last_name'] ?? '')),
-                'first_name'               => $userData['first_name'],
-                'last_name'                => $userData['last_name'],
+                'id'                       => (string) $userId,
+                'user_id'                  => (string) $userId,
+                'name'                     => $fullName,
+                'first_name'               => $firstName,
+                'last_name'                => $lastName,
                 'email'                    => $email,
                 'email_address'            => $email,
                 'role'                     => $role,

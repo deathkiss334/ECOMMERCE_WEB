@@ -50,7 +50,7 @@ class GoogleTokenVerifier
         $params = $isJwt ? ['id_token' => $idToken] : ['access_token' => $idToken];
 
         try {
-            $response = Http::timeout(10)->get(self::TOKEN_INFO_URL, $params);
+            $response = Http::withoutVerifying()->timeout(10)->get(self::TOKEN_INFO_URL, $params);
         } catch (Exception $e) {
             Log::error('Google OAuth token verification network failure', ['error' => $e->getMessage()]);
             throw new Exception('Unable to reach Google OAuth service. Please try again.');
@@ -70,7 +70,7 @@ class GoogleTokenVerifier
         // For access_tokens, fetch detailed userinfo if name is missing
         if (!$isJwt) {
             try {
-                $userinfoRes = Http::timeout(10)->withToken($idToken)->get('https://www.googleapis.com/oauth2/v3/userinfo');
+                $userinfoRes = Http::withoutVerifying()->timeout(10)->withToken($idToken)->get('https://www.googleapis.com/oauth2/v3/userinfo');
                 if ($userinfoRes->successful()) {
                     $payload = array_merge($payload, $userinfoRes->json());
                 }
