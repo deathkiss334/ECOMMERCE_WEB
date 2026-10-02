@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Order extends Model
 {
     protected $table = 'orders';
-    protected $primaryKey = 'order_id';
+    protected $primaryKey = 'id';
 
     protected $fillable = [
         'id',
@@ -171,12 +171,12 @@ class Order extends Model
 
     public function payments()
     {
-        return $this->hasMany(Payment::class, 'order_id', 'order_id');
+        return $this->hasMany(Payment::class, 'order_id', 'id');
     }
 
     public function latestPayment()
     {
-        return $this->hasOne(Payment::class, 'order_id', 'order_id')->latestOfMany('created_at');
+        return $this->hasOne(Payment::class, 'order_id', 'id')->latestOfMany('created_at');
     }
 
     public function chats()
