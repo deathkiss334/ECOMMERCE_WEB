@@ -3,10 +3,11 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
 class Payment extends Model
 {
-    protected $table = 'payment_record';
+    protected $table = 'payments';
     protected $primaryKey = 'payment_id';
     public $incrementing = false;
     protected $keyType = 'string';
@@ -24,9 +25,23 @@ class Payment extends Model
         'status',
     ];
 
+    protected static function booted()
+    {
+        static::creating(function ($payment) {
+            if (empty($payment->payment_id)) {
+                $payment->payment_id = (string) Str::uuid();
+            }
+        });
+    }
+
     public function getIdAttribute()
     {
-        return $this->attributes['payment_id'] ?? $this->attributes['id'] ?? null;
+        return $this->attributes['payment_id'] ?? null;
+    }
+
+    public function setIdAttribute($value)
+    {
+        $this->attributes['payment_id'] = $value;
     }
 
     public function getStatusAttribute()
