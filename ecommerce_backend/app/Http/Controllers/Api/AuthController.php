@@ -72,7 +72,7 @@ class AuthController extends Controller
         }
 
         // 2. Reject duplicate emails with explicit 409 Conflict
-        $existingUser = User::where('email', $rawEmail)->first();
+        $existingUser = User::where('email_address', $rawEmail)->orWhere('email', $rawEmail)->first();
         if ($existingUser) {
             return response()->json([
                 'message' => 'Email is already registered. Please log in instead.',
@@ -137,7 +137,7 @@ class AuthController extends Controller
         }
 
         // Query user by email
-        $user = User::where('email', $rawEmail)->first();
+        $user = User::where('email_address', $rawEmail)->orWhere('email', $rawEmail)->first();
 
         // Constant-time verification protection
         if (!$user || empty($user->password_hash)) {

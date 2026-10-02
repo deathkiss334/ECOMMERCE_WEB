@@ -14,24 +14,28 @@ class DatabaseSeeder extends Seeder
         User::firstOrCreate(
             ['email_address' => 'customer@example.com'],
             [
-                'first_name' => 'Demo',
-                'last_name' => 'User',
-                'name' => 'Demo User',
+                'first_name'    => 'Demo',
+                'last_name'     => 'User',
+                'name'          => 'Demo User',
+                'email'         => 'customer@example.com',
                 'password_hash' => Hash::make('Customer@12345'),
-                'phone' => '09123456789',
-                'role' => 'customer',
+                'phone_num'     => '09123456789',
+                'role'          => 'customer',
                 'auth_provider' => 'local',
             ]
         );
 
         // Add default System Administrator account
         User::firstOrCreate(
-            ['email' => 'admin@example.com'],
+            ['email_address' => 'admin@example.com'],
             [
-                'name' => 'System Admin',
+                'first_name'    => 'System',
+                'last_name'     => 'Admin',
+                'name'          => 'System Admin',
+                'email'         => 'admin@example.com',
                 'password_hash' => Hash::make('Admin@12345'),
-                'phone' => '09990001111',
-                'role' => 'admin',
+                'phone_num'     => '09990001111',
+                'role'          => 'admin',
                 'auth_provider' => 'local',
             ]
         );
