@@ -58,14 +58,25 @@ class _SignupPageState extends State<SignupPage> {
       setState(() => _isSubmitting = false);
       if (!mounted) return;
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Welcome, ${result.user.firstName}! Account registered in SQLite 🛡️'),
-          backgroundColor: Colors.green,
-        ),
-      );
+      final userRole = result.role;
 
-      Navigator.pushReplacementNamed(context, '/shop');
+      if (userRole == 'admin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Welcome, Admin! Accessing System Admin Dashboard 👑'),
+            backgroundColor: Color(0xFF2563EB),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Welcome, ${result.user.firstName}! Account registered 🛡️'),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/');
+      }
     } catch (e) {
       setState(() => _isSubmitting = false);
       if (!mounted) return;
