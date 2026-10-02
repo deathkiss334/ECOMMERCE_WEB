@@ -11,16 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('users_table', function (Blueprint $table) {
-            $table->string('email_address')->primary();
-            $table->string('first_name');
-            $table->string('middle_name')->nullable();
-            $table->string('last_name');
-            $table->string('birthday')->nullable();
-            $table->text('address')->nullable();
-            $table->string('phone_number')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('users_table')) {
+            Schema::create('users_table', function (Blueprint $table) {
+                $table->string('email_address')->primary();
+                $table->string('first_name');
+                $table->string('middle_name')->nullable();
+                $table->string('last_name');
+                $table->string('birthday')->nullable();
+                $table->text('address')->nullable();
+                $table->string('phone_number')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**

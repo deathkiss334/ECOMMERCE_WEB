@@ -11,14 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('payment_transactions', function (Blueprint $table) {
-            $table->id();
-            $table->string('payment_id');
-            $table->foreign('payment_id')->references('payment_id')->on('payments')->cascadeOnDelete();
-            $table->string('event_name');
-            $table->json('raw_webhook_payload');
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('payment_transactions')) {
+            Schema::create('payment_transactions', function (Blueprint $table) {
+                $table->id();
+                $table->string('payment_id');
+                $table->string('event_name');
+                $table->json('raw_webhook_payload');
+                $table->timestamps();
+            });
+        }
     }
 
     /**

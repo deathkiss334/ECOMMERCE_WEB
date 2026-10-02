@@ -6,25 +6,21 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            if (!Schema::hasColumn('orders', 'lalamove_tracking_url')) {
-                $table->text('lalamove_tracking_url')->nullable();
+            if (!Schema::hasColumn('orders', 'order_type')) {
+                $table->string('order_type')->default('delivery');
             }
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('orders', function (Blueprint $table) {
-            $table->dropColumn('lalamove_tracking_url');
+            if (Schema::hasColumn('orders', 'order_type')) {
+                $table->dropColumn('order_type');
+            }
         });
     }
 };

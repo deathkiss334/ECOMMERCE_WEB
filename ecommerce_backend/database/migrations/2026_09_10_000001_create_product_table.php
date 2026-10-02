@@ -11,13 +11,15 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('product_table', function (Blueprint $table) {
-            $table->string('product_id')->primary();
-            $table->integer('product_quantity')->default(0);
-            $table->string('product_type');
-            $table->decimal('product_price', 10, 2)->default(0.00);
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('product_table')) {
+            Schema::create('product_table', function (Blueprint $table) {
+                $table->string('product_id')->primary();
+                $table->integer('product_quantity')->default(0);
+                $table->string('product_type');
+                $table->decimal('product_price', 10, 2)->default(0.00);
+                $table->timestamps();
+            });
+        }
     }
 
     /**
