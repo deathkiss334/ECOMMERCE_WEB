@@ -41,10 +41,12 @@ Route::get('/user', function (Request $request) {
 Route::middleware(['auth:sanctum', 'role:admin'])->prefix('admin')->group(function () {
     Route::get('/users', [AdminController::class, 'users']);
     Route::put('/users/{id}/role', [AdminController::class, 'updateUserRole']);
+    Route::get('/analytics', [AdminController::class, 'analytics']);
 });
 
 // Admin verification and order management without sanctum requirement (for development & test panels)
 Route::get('/admin/orders', [AdminController::class, 'orders']);
+Route::get('/admin/analytics', [AdminController::class, 'analytics']);
 Route::patch('/admin/orders/{orderId}/verify', [AdminController::class, 'verifyOrder']);
 Route::post('/admin/orders/{id}/verify-payment', [AdminController::class, 'verifyPayment']);
 Route::get('/admin/orders-list', [AdminController::class, 'orders']);
@@ -131,4 +133,6 @@ Route::delete('/product-table/{id}', [ProductTableController::class, 'destroy'])
 // ── Users Table API Endpoints ─────────────────────────────────────────────────
 Route::get('/users-table', [UsersTableController::class, 'index']);
 Route::post('/users-table', [UsersTableController::class, 'store']);
+Route::patch('/users-table/{email}/role', [UsersTableController::class, 'updateRole']);
 Route::delete('/users-table/{id}', [UsersTableController::class, 'destroy']);
+

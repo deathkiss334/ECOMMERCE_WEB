@@ -338,4 +338,90 @@ class SupabaseService
 
         return null;
     }
+
+    /**
+     * Fetch ALL users from Supabase users_table (admin view).
+     */
+    public static function getAllUsersFromSupabase(): array
+    {
+        try {
+            $response = self::client()
+                ->get(self::tableUrl('users_table'), [
+                    'select' => '*',
+                    'order'  => 'created_at.desc',
+                    'limit'  => '500',
+                ]);
+
+            if ($response->successful()) {
+                return $response->json() ?? [];
+            }
+
+            Log::warning('Supabase getAllUsersFromSupabase failed: ' . $response->body());
+        } catch (\Throwable $e) {
+            Log::error('Supabase getAllUsersFromSupabase exception: ' . $e->getMessage());
+        }
+
+        return [];
+    }
+
+    /**
+     * Update a user's role in Supabase users_table.
+     */
+    public static function updateUserRoleInSupabase(string $email, string $role): bool
+    {
+        if (!self::isEnabled("updateUserRole {$email}")) {
+            return false;
+        }
+
+        try {
+            $response = self::client()
+                ->patch(self::tableUrl('users_table') . '?email_address=eq.' . urlencode($email), [
+                    'user_role'  => $role,
+                    'updated_at' => now()->toIso8601String(),
+                ]);
+
+            if ($response->successful()) {
+                Log::info("Supabase ✓ updateUserRole {$email} → {$role}");
+                return true;
+            }
+
+            Log::warning("Supabase updateUserRole ✗ {$email}: " . $response->body());
+        } catch (\Throwable $e) {
+            Log::error("Supabase updateUserRole exception ({$email}): " . $e->getMessage());
+        }
+
+        return false;
+    }
+
+    /**
+     * Delete a user from Supabase users_table by email (or sanitised doc id).
+     */
+    public static function deleteUserFromSupabase(string $emailOrDocId): bool
+    {
+        // Determine actual email: if it looks like a raw email, use it; else try to reverse the sanitisation
+        $email = str_contains($emailOrDocId, '@')
+            ? $emailOrDocId
+            : str_replace('_at_', '@', str_replace('_dot_', '.', $emailOrDocId));
+
+        if (!self::isEnabled("deleteUser {$email}")) {
+            return false;
+        }
+
+        try {
+            $response = self::client()
+                ->delete(self::tableUrl('users_table') . '?email_address=eq.' . urlencode($email));
+
+            if ($response->successful()) {
+                Log::info("Supabase ✓ deleteUser {$email}");
+                return true;
+            }
+
+            Log::warning("Supabase deleteUser ✗ {$email}: " . $response->body());
+        } catch (\Throwable $e) {
+            Log::error("Supabase deleteUser exception ({$email}): " . $e->getMessage());
+        }
+
+        return false;
+    }
 }
+
