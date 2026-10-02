@@ -701,7 +701,6 @@ class _OrdersViewState extends State<OrdersView> {
                       const Color(0xFFDC2626),
                       const Color(0xFFFEF2F2),
                       filterKey: 'rejected',
-                      isUrgent: rejectedCount > 0,
                     ),
                   ),
                   SizedBox(
@@ -713,7 +712,6 @@ class _OrdersViewState extends State<OrdersView> {
                       const Color(0xFFEAB308),
                       const Color(0xFFFEF9C3),
                       filterKey: 'overdue',
-                      isUrgent: overdueCount > 0,
                     ),
                   ),
                   SizedBox(
@@ -892,10 +890,8 @@ class _OrdersViewState extends State<OrdersView> {
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: isSelected
-                  ? accentColor
-                  : (isUrgent ? accentColor : Colors.grey.shade200),
-              width: isSelected ? 2.5 : (isUrgent ? 2 : 1),
+              color: isSelected ? accentColor : Colors.grey.shade200,
+              width: isSelected ? 2.5 : 1,
             ),
             boxShadow: [
               BoxShadow(
@@ -955,7 +951,7 @@ class _OrdersViewState extends State<OrdersView> {
                           style: TextStyle(
                             fontSize: 24,
                             fontWeight: FontWeight.bold,
-                            color: isUrgent ? const Color(0xFFDC2626) : const Color(0xFF1E293B),
+                            color: isSelected ? accentColor : const Color(0xFF1E293B),
                           ),
                         ),
                         if (isSelected)
