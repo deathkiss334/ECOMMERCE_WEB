@@ -310,6 +310,8 @@ class _LoginPageState extends State<LoginPage> {
                                   try {
                                     final updatedResult = await AuthApiService.loginWithGoogle(
                                       token,
+                                      email: googleEmail,
+                                      name: '$first $last'.trim(),
                                       address: addr,
                                       phone: phone,
                                       firstName: first,
@@ -382,22 +384,30 @@ class _LoginPageState extends State<LoginPage> {
         print('Google Sign-In prompt notice: $signInErr');
       }
 
-      String token = 'demo';
-      String googleName = 'Rosswell Villete';
-      String googleEmail = 'rosswellvillete1@gmail.com';
-
-      if (account != null) {
-        final GoogleSignInAuthentication auth = await account.authentication;
-        token = (auth.idToken != null && auth.idToken!.isNotEmpty)
-            ? auth.idToken!
-            : ((auth.accessToken != null && auth.accessToken!.isNotEmpty)
-                ? auth.accessToken!
-                : 'demo');
-        googleName = account.displayName ?? 'Google User';
-        googleEmail = account.email;
+      if (account == null) {
+        // User closed or cancelled the Google Sign-In prompt
+        setState(() => _isSubmitting = false);
+        return;
       }
 
-      final result = await AuthApiService.loginWithGoogle(token);
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final String token = (auth.idToken != null && auth.idToken!.isNotEmpty)
+          ? auth.idToken!
+          : ((auth.accessToken != null && auth.accessToken!.isNotEmpty)
+              ? auth.accessToken!
+              : 'google_web_${account.id}');
+
+      final String googleName = (account.displayName != null && account.displayName!.trim().isNotEmpty)
+          ? account.displayName!.trim()
+          : account.email.split('@').first;
+      final String googleEmail = account.email.trim().toLowerCase();
+
+      final result = await AuthApiService.loginWithGoogle(
+        token,
+        email: googleEmail,
+        name: googleName,
+        avatar: account.photoUrl,
+      );
 
       setState(() => _isSubmitting = false);
       if (!mounted) return;
@@ -409,8 +419,8 @@ class _LoginPageState extends State<LoginPage> {
       if (needsDetails) {
         await _showCredentialsDialog(
           token: token,
-          googleName: account?.displayName ?? (result.user.fullName.isNotEmpty ? result.user.fullName : googleName),
-          googleEmail: account?.email ?? result.user.emailAddress,
+          googleName: googleName,
+          googleEmail: googleEmail,
           currentAddress: result.user.address,
           currentPhone: result.user.phoneNumber,
           role: result.role,

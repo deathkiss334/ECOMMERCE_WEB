@@ -68,15 +68,22 @@ class ApiService {
     }
   }
 
-  static Future<OrderModel> trackOrder(String orderNumber) async {
+  static Future<OrderModel> trackOrder(String orderNumber, {String? email}) async {
     try {
-      final response = await http.get(Uri.parse('$baseUrl/orders/track/$orderNumber'));
+      final uri = Uri.parse('$baseUrl/orders/track/$orderNumber').replace(
+        queryParameters: email != null && email.trim().isNotEmpty ? {'email': email.trim()} : null,
+      );
+      final response = await http.get(uri);
       if (response.statusCode == 200) {
         return OrderModel.fromJson(json.decode(response.body));
+      } else if (response.statusCode == 403) {
+        final data = json.decode(response.body);
+        throw Exception(data['message'] ?? 'This order belongs to a registered customer. Please sign in to view it.');
       } else {
-        throw Exception('Failed to track order: ${response.statusCode}');
+        throw Exception('Order not found ($orderNumber)');
       }
     } catch (e) {
+      if (e is Exception) rethrow;
       throw Exception('Network Error: $e');
     }
   }

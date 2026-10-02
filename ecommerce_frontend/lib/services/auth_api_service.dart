@@ -1,7 +1,9 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'firebase_user_service.dart';
+import 'guest_order_storage.dart';
 
 class AuthResult {
   final String token;
@@ -23,6 +25,9 @@ class AuthApiService {
     defaultValue: 'http://127.0.0.1:8000/api',
   );
 
+  static const String _tokenPrefKey = 'dasmabites_auth_token';
+  static const String _userPrefKey = 'dasmabites_auth_user';
+
   static String? _authToken;
 
   /// Returns active auth token
@@ -34,6 +39,46 @@ class AuthApiService {
   /// Set the active token manually
   static void setAuthToken(String? token) {
     _authToken = token;
+  }
+
+  /// Save session to persistent storage
+  static Future<void> saveSession(String token, UserModel user) async {
+    _authToken = token;
+    FirebaseUserService.setCurrentUser(user);
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString(_tokenPrefKey, token);
+      await prefs.setString(_userPrefKey, json.encode(user.toJson()));
+    } catch (_) {}
+  }
+
+  /// Restore user session across browser refresh (F5)
+  static Future<UserModel?> loadSavedSession() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final token = prefs.getString(_tokenPrefKey);
+      final userJsonStr = prefs.getString(_userPrefKey);
+
+      if (token != null && token.isNotEmpty && userJsonStr != null && userJsonStr.isNotEmpty) {
+        final userData = json.decode(userJsonStr) as Map<String, dynamic>;
+        final user = UserModel.fromJson(userData);
+        _authToken = token;
+        FirebaseUserService.setCurrentUser(user);
+        return user;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  /// Clear persistent session on logout
+  static Future<void> clearSession() async {
+    _authToken = null;
+    FirebaseUserService.setCurrentUser(UserModel.guest());
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_tokenPrefKey);
+      await prefs.remove(_userPrefKey);
+    } catch (_) {}
   }
 
   /// Sign Up / Register new customer in SQLite backend
@@ -61,8 +106,7 @@ class AuthApiService {
       final userData = data['user'] as Map<String, dynamic>;
       final user = UserModel.fromBackendJson(userData);
 
-      _authToken = token;
-      FirebaseUserService.setCurrentUser(user);
+      await saveSession(token, user);
 
       return AuthResult(
         token: token,
@@ -106,8 +150,7 @@ class AuthApiService {
       final userData = data['user'] as Map<String, dynamic>;
       final user = UserModel.fromBackendJson(userData);
 
-      _authToken = token;
-      FirebaseUserService.setCurrentUser(user);
+      await saveSession(token, user);
 
       return AuthResult(
         token: token,
@@ -124,6 +167,9 @@ class AuthApiService {
   /// Google OAuth 2.0 Sign In (Zero Firebase)
   static Future<AuthResult> loginWithGoogle(
     String idToken, {
+    String? email,
+    String? name,
+    String? avatar,
     String? address,
     String? phone,
     String? firstName,
@@ -132,6 +178,9 @@ class AuthApiService {
     final body = <String, dynamic>{
       'id_token': idToken,
     };
+    if (email != null && email.isNotEmpty) body['email'] = email;
+    if (name != null && name.isNotEmpty) body['name'] = name;
+    if (avatar != null && avatar.isNotEmpty) body['avatar'] = avatar;
     if (address != null && address.isNotEmpty) body['address'] = address;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
@@ -150,8 +199,7 @@ class AuthApiService {
       final userData = data['user'] as Map<String, dynamic>;
       final user = UserModel.fromBackendJson(userData);
 
-      _authToken = token;
-      FirebaseUserService.setCurrentUser(user);
+      await saveSession(token, user);
 
       return AuthResult(
         token: token,
@@ -266,7 +314,7 @@ class AuthApiService {
       } catch (_) {}
     }
 
-    _authToken = null;
-    FirebaseUserService.setCurrentUser(UserModel.guest());
+    await clearSession();
+    await GuestOrderStorage.clear();
   }
 }

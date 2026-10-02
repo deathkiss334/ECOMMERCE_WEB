@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:url_launcher/url_launcher.dart';
-import '../services/guest_order_storage.dart';
 import '../services/checkout_service.dart';
 import 'order_chat_dialog.dart';
 
@@ -50,7 +49,6 @@ class _QrPaymentModalState extends State<QrPaymentModal> {
   @override
   void initState() {
     super.initState();
-    GuestOrderStorage.saveOrderNumber(widget.orderNumber);
     _startPolling();
   }
 

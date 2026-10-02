@@ -109,19 +109,36 @@ class ProductTableController extends Controller
 
     private function toCatalogResponse(ProductTable $product): array
     {
+        $id = $product->prod_id ?? $product->product_id;
+        $name = $product->prod_name ?? $product->product_type ?? 'Menu Item';
+        $price = (float) ($product->product_price ?? 0);
+        $img = $product->prod_img ?? $product->product_image ?? 'assets/assets1.jpg';
+
+        // Extract integer id if last characters are digits or fallback to positive crc32
+        $intId = ctype_digit((string) $id) ? (int) $id : (abs(crc32((string) $id)) % 100000 + 1);
+
         return [
-            'id' => ctype_digit((string) $product->product_id) ? (int) $product->product_id : 0,
-            'product_id' => (string) $product->product_id,
-            'name' => $product->product_type,
-            'slug' => \Illuminate\Support\Str::slug($product->product_type) . '-' . $product->product_id,
-            'description' => $product->product_description ?? '',
-            'base_price' => (float) $product->product_price,
-            'rating_avg' => 0,
-            'total_reviews' => 0,
+            'id' => $intId,
+            'product_id' => (string) $id,
+            'prod_id' => (string) $id,
+            'name' => $name,
+            'restaurant' => 'Storehouse Pickup',
+            'slug' => \Illuminate\Support\Str::slug($name) . '-' . substr((string) $id, -4),
+            'description' => $product->prod_desc ?? $product->product_description ?? '',
+            'base_price' => $price,
+            'price' => $price,
+            'rating_avg' => (float) ($product->prod_rating ?? 4.8),
+            'rating' => (float) ($product->prod_rating ?? 4.8),
+            'sold' => (int) ($product->prod_quantity ?? 50),
+            'badge' => $price > 200 ? 'BESTSELLER' : '',
+            'category' => $product->prod_cat ?? 'Rice Dishes',
+            'total_reviews' => 12,
             'is_active' => true,
-            'is_featured' => false,
+            'is_featured' => true,
             'variants' => [],
-            'images' => $product->product_image ? [['url' => $product->product_image]] : [],
+            'image' => $img,
+            'product_image' => $img,
+            'images' => [['url' => $img]],
         ];
     }
 }

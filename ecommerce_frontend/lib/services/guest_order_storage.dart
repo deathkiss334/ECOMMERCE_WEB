@@ -32,4 +32,23 @@ class GuestOrderStorage {
       }
     } catch (_) {}
   }
+  static Future<void> clear() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove(_key);
+    } catch (_) {}
+  }
+
+  /// Remove a specific order number from this device
+  static Future<void> removeOrderNumber(String orderNumber) async {
+    final clean = orderNumber.trim();
+    if (clean.isEmpty) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.reload();
+      final existing = List<String>.from(prefs.getStringList(_key) ?? []);
+      existing.remove(clean);
+      await prefs.setStringList(_key, existing);
+    } catch (_) {}
+  }
 }

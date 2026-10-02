@@ -32,7 +32,9 @@ class CheckoutService {
           'second_name': secondName ?? '',
           'middle_name': middleName ?? '',
           'birthday': birthday ?? '',
+          'customer_email': emailAddress ?? '',
           'email_address': emailAddress ?? '',
+          'email': emailAddress ?? '',
           'is_verified': isVerified,
         }),
       );
@@ -65,6 +67,8 @@ class CheckoutService {
       if (gcashRefNumber != null && gcashRefNumber.trim().isNotEmpty) {
         request.fields['gcash_ref_number'] = gcashRefNumber.trim();
       }
+
+      request.fields['receipt_base64'] = base64Encode(imageBytes);
 
       request.files.add(
         http.MultipartFile.fromBytes(

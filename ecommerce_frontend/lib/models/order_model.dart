@@ -19,6 +19,7 @@ class OrderModel {
   final String? rejectionReason;
   final String? verifiedAt;
   final String? lalamoveTrackingUrl;
+  final String? userId;
 
   OrderModel({
     required this.id,
@@ -41,6 +42,7 @@ class OrderModel {
     this.rejectionReason,
     this.verifiedAt,
     this.lalamoveTrackingUrl,
+    this.userId,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -68,6 +70,7 @@ class OrderModel {
       rejectionReason: json['rejection_reason'] ?? json['rejectionReason'],
       verifiedAt: json['verified_at'] ?? json['verifiedAt'],
       lalamoveTrackingUrl: json['lalamove_tracking_url'] ?? json['tracking_url'] ?? json['lalamoveTrackingUrl'],
+      userId: json['user_id']?.toString() ?? json['userId']?.toString(),
     );
   }
 

@@ -5,12 +5,12 @@ import '../services/api_service.dart';
 import '../services/adapter_service.dart';
 import '../services/checkout_service.dart';
 import '../services/firebase_user_service.dart';
+import '../services/auth_api_service.dart';
 import '../widgets/qr_payment_modal.dart';
 import '../widgets/order_history_sheet.dart';
 import '../services/guest_order_storage.dart';
 import 'sheets/item_detail_bottom_sheet.dart';
 import 'sheets/cart_bottom_sheet.dart';
-import 'sheets/profile_bottom_sheet.dart';
 
 List<FoodItem> foodItemsData = [];
 
@@ -28,11 +28,23 @@ class _HomeScreenState extends State<HomeScreen> {
   void initState() {
     super.initState();
     _fetchProducts();
-    GuestOrderStorage.getStoredOrderNumbers().then((stored) {
-      if (mounted && stored.isNotEmpty) {
+    // 1. Restore authenticated user profile on app startup / page refresh (F5)
+    AuthApiService.loadSavedSession().then((savedUser) {
+      if (mounted && savedUser != null && savedUser.isVerified) {
+        FirebaseUserService.setCurrentUser(savedUser);
         setState(() {
-          for (final o in stored) {
-            if (!_sessionOrderNumbers.contains(o)) _sessionOrderNumbers.add(o);
+          _currentUser = savedUser;
+          _sessionOrderNumbers.clear();
+        });
+      } else {
+        // 2. Only restore guest device orders if running in Guest mode
+        GuestOrderStorage.getStoredOrderNumbers().then((stored) {
+          if (mounted && stored.isNotEmpty && !_currentUser.isVerified) {
+            setState(() {
+              for (final o in stored) {
+                if (!_sessionOrderNumbers.contains(o)) _sessionOrderNumbers.add(o);
+              }
+            });
           }
         });
       }
@@ -738,23 +750,53 @@ class _HomeScreenState extends State<HomeScreen> {
                             const SizedBox(height: 14),
 
                             // Payment Method Selection
-                            Row(
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                const Spacer(),
-                                ChoiceChip(
-                                  label: const Text('GCash / QR'),
-                                  selected: selectedPaymentMethod == 'gcash',
-                                  onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'gcash'),
-                                  selectedColor: brandColor.withValues(alpha: 0.2),
+                                Row(
+                                  children: [
+                                    const Text('Payment Method:', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                                    const Spacer(),
+                                    ChoiceChip(
+                                      label: const Text('GCash / QR (Pay First)'),
+                                      selected: selectedPaymentMethod == 'gcash',
+                                      onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'gcash'),
+                                      selectedColor: brandColor.withValues(alpha: 0.2),
+                                    ),
+                                    if (isDelivery) ...[
+                                      const SizedBox(width: 8),
+                                      ChoiceChip(
+                                        label: const Text('COD'),
+                                        selected: selectedPaymentMethod == 'cod',
+                                        onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'cod'),
+                                        selectedColor: brandColor.withValues(alpha: 0.2),
+                                      ),
+                                    ],
+                                  ],
                                 ),
-                                const SizedBox(width: 8),
-                                ChoiceChip(
-                                  label: const Text('COD'),
-                                  selected: selectedPaymentMethod == 'cod',
-                                  onSelected: (_) => setSummaryState(() => selectedPaymentMethod = 'cod'),
-                                  selectedColor: brandColor.withValues(alpha: 0.2),
-                                ),
+                                if (!isDelivery) ...[
+                                  const SizedBox(height: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                    decoration: BoxDecoration(
+                                      color: Colors.amber.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
+                                    ),
+                                    child: const Row(
+                                      children: [
+                                        Icon(Icons.shield_outlined, size: 16, color: Color(0xFFD97706)),
+                                        SizedBox(width: 6),
+                                        Expanded(
+                                          child: Text(
+                                            'Karinderya Policy: Pay First via GCash to confirm order and start cooking 🍳',
+                                            style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF92400E)),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
                               ],
                             ),
                           ],
@@ -809,10 +851,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             if (result.containsKey('order_number') || result.containsKey('orderId')) {
                               final newOrderNum = (result['order_number'] ?? result['orderId']).toString();
-                              if (!_sessionOrderNumbers.contains(newOrderNum)) {
-                                _sessionOrderNumbers.add(newOrderNum);
+                              // Strictly isolate: only save order number in session/device storage for unauthenticated guest orders!
+                              if (!_currentUser.isVerified) {
+                                if (!_sessionOrderNumbers.contains(newOrderNum)) {
+                                  _sessionOrderNumbers.add(newOrderNum);
+                                }
+                                await GuestOrderStorage.saveOrderNumber(newOrderNum);
                               }
-                              await GuestOrderStorage.saveOrderNumber(newOrderNum);
                             }
 
                             Navigator.pop(context); // Pop loading
@@ -841,6 +886,7 @@ class _HomeScreenState extends State<HomeScreen> {
                                   behavior: SnackBarBehavior.floating,
                                 ),
                               );
+                              _showOrdersModal();
                             }
                           } catch (e) {
                             Navigator.pop(context); // Pop loading
@@ -919,23 +965,16 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => OrderHistorySheet(
-        sessionOrderNumbers: _sessionOrderNumbers,
-        userPhone: _currentUser.phoneNumber,
-        userEmail: _currentUser.emailAddress,
-        userName: _currentUser.firstName,
+        sessionOrderNumbers: _currentUser.isVerified ? [] : _sessionOrderNumbers,
+        userPhone: _currentUser.isVerified && _currentUser.phoneNumber.isNotEmpty ? _currentUser.phoneNumber : null,
+        userEmail: _currentUser.isVerified && _currentUser.emailAddress.isNotEmpty ? _currentUser.emailAddress : null,
+        userName: _currentUser.isVerified && _currentUser.firstName.isNotEmpty ? _currentUser.firstName : null,
       ),
     );
   }
 
   void _showProfileModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ProfileBottomSheet(
-        
-      ),
-    );
+    _showOrdersModal();
   }
 
   @override
@@ -1144,9 +1183,13 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
             const SizedBox(width: 6),
             TextButton.icon(
-              onPressed: () {
-                setState(() => _currentUser = UserModel.guest());
-                FirebaseUserService.setCurrentUser(_currentUser);
+              onPressed: () async {
+                await AuthApiService.logout();
+                setState(() {
+                  _currentUser = UserModel.guest();
+                  _sessionOrderNumbers.clear();
+                });
+                if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Logged Out successfully')),
                 );
@@ -1158,7 +1201,11 @@ class _HomeScreenState extends State<HomeScreen> {
             TextButton.icon(
               onPressed: () async {
                 await Navigator.pushNamed(context, '/login');
-                setState(() => _currentUser = FirebaseUserService.currentUser);
+                final saved = await AuthApiService.loadSavedSession();
+                setState(() {
+                  _currentUser = saved ?? FirebaseUserService.currentUser;
+                  _sessionOrderNumbers.clear();
+                });
               },
               icon: const Icon(Icons.login, size: 18, color: Colors.black87),
               label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),

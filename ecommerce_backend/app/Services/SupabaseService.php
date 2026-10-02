@@ -30,7 +30,8 @@ class SupabaseService
      */
     private static function client(): \Illuminate\Http\Client\PendingRequest
     {
-        return Http::timeout(8)
+        return Http::withoutVerifying()
+            ->timeout(8)
             ->withHeaders([
                 'apikey'        => config('supabase.key'),
                 'Authorization' => 'Bearer ' . config('supabase.key'),

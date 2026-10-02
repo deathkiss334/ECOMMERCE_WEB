@@ -75,20 +75,35 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
     } catch (_) {}
   }
 
-  Future<List<OrderModel>> _fetchOrdersForThisDevice() async {
-    // 1. Get stored orders on this device
-    final stored = await GuestOrderStorage.getStoredOrderNumbers();
-    final combined = <String>{};
-    if (widget.sessionOrderNumbers != null) {
-      combined.addAll(widget.sessionOrderNumbers!);
-    }
-    combined.addAll(stored);
+  bool get _isLoggedIn => widget.userEmail != null && widget.userEmail!.trim().isNotEmpty;
 
-    return ApiService.getOrders(
-      orderNumbers: combined.toList(),
-      phone: widget.userPhone,
-      email: widget.userEmail,
-    );
+  Future<List<OrderModel>> _fetchOrdersForThisDevice() async {
+    if (_isLoggedIn) {
+      // 1. Logged-in Customer Flow:
+      // Strictly fetch orders belonging to this authenticated account email only.
+      // Do NOT merge random device order numbers to prevent account cross-pollution.
+      return ApiService.getOrders(
+        email: widget.userEmail!.trim(),
+      );
+    } else {
+      // 2. Guest Customer Flow:
+      // Guests don't have an account; retrieve orders specifically saved on this device or session.
+      final stored = await GuestOrderStorage.getStoredOrderNumbers();
+      final combined = <String>{};
+      if (widget.sessionOrderNumbers != null) {
+        combined.addAll(widget.sessionOrderNumbers!);
+      }
+      combined.addAll(stored);
+
+      // If guest has placed no orders on this device, immediately return empty list
+      if (combined.isEmpty) {
+        return <OrderModel>[];
+      }
+
+      return ApiService.getOrders(
+        orderNumbers: combined.toList(),
+      );
+    }
   }
 
   Future<void> _handleLookup() async {
@@ -97,14 +112,25 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
 
     setState(() => _isLookingUp = true);
     try {
-      final order = await ApiService.trackOrder(orderNum);
-      await GuestOrderStorage.saveOrderNumber(order.orderNumber);
+      final order = await ApiService.trackOrder(
+        orderNum,
+        email: _isLoggedIn ? widget.userEmail?.trim() : null,
+      );
+      if (!_isLoggedIn) {
+        if (order.userId != null && order.userId!.isNotEmpty) {
+          throw Exception('This order belongs to a registered customer. Please sign in to view it.');
+        }
+        await GuestOrderStorage.saveOrderNumber(order.orderNumber);
+      }
+      if (widget.sessionOrderNumbers != null && !widget.sessionOrderNumbers!.contains(order.orderNumber)) {
+        widget.sessionOrderNumbers!.add(order.orderNumber);
+      }
       _lookupController.clear();
       _loadOrders();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Order #${order.orderNumber} added to this device!'),
+            content: Text('Order #${order.orderNumber} added to tracking!'),
             backgroundColor: const Color(0xFF059669),
           ),
         );
@@ -114,7 +140,7 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Order "$orderNum" not found. Please verify your order number.'),
+            content: Text(e.toString().replaceAll('Exception: ', '')),
             backgroundColor: Colors.red,
           ),
         );
@@ -153,19 +179,65 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Row(
-                      children: const [
-                        Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 24),
-                        SizedBox(width: 8),
-                        Text(
-                          'My Orders & Tracking',
-                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                      children: [
+                        const Icon(Icons.receipt_long, color: OrderHistorySheet.brandColor, size: 24),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'My Orders & Tracking',
+                              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF111827)),
+                            ),
+                            Text(
+                              _isLoggedIn
+                                  ? 'Account: ${widget.userEmail}'
+                                  : 'Guest Mode (Orders on this device)',
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: _isLoggedIn ? const Color(0xFF059669) : const Color(0xFF6B7280),
+                                fontWeight: _isLoggedIn ? FontWeight.w600 : FontWeight.normal,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, color: Color(0xFF4B5563)),
-                      onPressed: _loadOrders,
-                      tooltip: 'Refresh orders',
+                    Row(
+                      children: [
+                        if (!_isLoggedIn && _orders != null && _orders!.isNotEmpty)
+                          IconButton(
+                            icon: const Icon(Icons.delete_sweep_outlined, color: Color(0xFFEF4444)),
+                            onPressed: () async {
+                              final confirm = await showDialog<bool>(
+                                context: context,
+                                builder: (c) => AlertDialog(
+                                  title: const Text('Clear Saved Orders?'),
+                                  content: const Text('This will remove all saved order tracking from this device.'),
+                                  actions: [
+                                    TextButton(onPressed: () => Navigator.pop(c, false), child: const Text('Cancel')),
+                                    TextButton(
+                                      onPressed: () => Navigator.pop(c, true),
+                                      style: TextButton.styleFrom(foregroundColor: Colors.red),
+                                      child: const Text('Clear'),
+                                    ),
+                                  ],
+                                ),
+                              );
+                              if (confirm == true) {
+                                await GuestOrderStorage.clear();
+                                widget.sessionOrderNumbers?.clear();
+                                _loadOrders();
+                              }
+                            },
+                            tooltip: 'Clear orders on this device',
+                          ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh, color: Color(0xFF4B5563)),
+                          onPressed: _loadOrders,
+                          tooltip: 'Refresh orders',
+                        ),
+                      ],
                     ),
                   ],
                 ),
@@ -222,18 +294,22 @@ class _OrderHistorySheetState extends State<OrderHistorySheet> {
                               padding: const EdgeInsets.all(24),
                               child: Column(
                                 mainAxisSize: MainAxisSize.min,
-                                children: const [
-                                  Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
-                                  SizedBox(height: 12),
+                                children: [
+                                  const Icon(Icons.shopping_bag_outlined, size: 48, color: Color(0xFF9CA3AF)),
+                                  const SizedBox(height: 12),
                                   Text(
-                                    'No orders found on this device',
-                                    style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF4B5563)),
+                                    _isLoggedIn
+                                        ? 'No orders found for this account'
+                                        : 'No orders found on this device',
+                                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF4B5563)),
                                   ),
-                                  SizedBox(height: 6),
+                                  const SizedBox(height: 6),
                                   Text(
-                                    'Orders placed on this device will appear here automatically. You can also paste your Order # in the search box above to track live.',
+                                    _isLoggedIn
+                                        ? 'Orders placed under ${widget.userEmail} will appear here automatically.'
+                                        : 'Orders placed on this device will appear here automatically. You can also paste your Order # in the search box above.',
                                     textAlign: TextAlign.center,
-                                    style: TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
+                                    style: const TextStyle(fontSize: 12, color: Color(0xFF9CA3AF)),
                                   ),
                                 ],
                               ),
