@@ -28,7 +28,7 @@ class GoogleTokenVerifier
      * @return array
      * @throws Exception
      */
-    public function verify(string $idToken): array
+    public function verify(string $idToken, ?array $clientHints = null): array
     {
         $idToken = trim($idToken);
         if (empty($idToken)) {
@@ -37,11 +37,13 @@ class GoogleTokenVerifier
 
         // Local development/sandbox testing bypass
         if (config('app.env') === 'local' && in_array(strtolower($idToken), ['demo', 'mock', 'demo_token', 'test_google_token'], true)) {
+            $email = $clientHints['email'] ?? request('email') ?? 'google.user@example.com';
+            $name = $clientHints['name'] ?? request('name') ?? 'Google User';
             return [
-                'google_id' => '113506846697013685437',
-                'email' => 'rosswellvillete1@gmail.com',
-                'name' => 'Rosswell Villete (Bullet Rosswell)',
-                'avatar' => 'https://lh3.googleusercontent.com/a/ACg8ocLfsa3ZVvtqSjORcQhrjDdcYfdRHwMlgb2DSCJedI-TyfCS9eM=s96-c',
+                'google_id' => 'dev_' . md5($email),
+                'email' => strtolower(trim($email)),
+                'name' => trim($name),
+                'avatar' => $clientHints['avatar'] ?? request('avatar') ?? '',
                 'email_verified' => true,
             ];
         }

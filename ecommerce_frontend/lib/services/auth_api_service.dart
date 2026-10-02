@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../models/user_model.dart';
 import 'firebase_user_service.dart';
+import 'guest_order_storage.dart';
 
 class AuthResult {
   final String token;
@@ -166,6 +167,9 @@ class AuthApiService {
   /// Google OAuth 2.0 Sign In (Zero Firebase)
   static Future<AuthResult> loginWithGoogle(
     String idToken, {
+    String? email,
+    String? name,
+    String? avatar,
     String? address,
     String? phone,
     String? firstName,
@@ -174,6 +178,9 @@ class AuthApiService {
     final body = <String, dynamic>{
       'id_token': idToken,
     };
+    if (email != null && email.isNotEmpty) body['email'] = email;
+    if (name != null && name.isNotEmpty) body['name'] = name;
+    if (avatar != null && avatar.isNotEmpty) body['avatar'] = avatar;
     if (address != null && address.isNotEmpty) body['address'] = address;
     if (phone != null && phone.isNotEmpty) body['phone'] = phone;
     if (firstName != null && firstName.isNotEmpty) body['first_name'] = firstName;
@@ -307,7 +314,7 @@ class AuthApiService {
       } catch (_) {}
     }
 
-    _authToken = null;
-    FirebaseUserService.setCurrentUser(UserModel.guest());
+    await clearSession();
+    await GuestOrderStorage.clear();
   }
 }

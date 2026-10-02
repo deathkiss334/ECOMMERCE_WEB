@@ -20,7 +20,8 @@ class OrderService
     {
         return DB::transaction(function () use ($data) {
             $customerName = trim($data['customer_name'] ?? 'Customer');
-            $customerEmail = !empty($data['customer_email']) ? strtolower(trim($data['customer_email'])) : null;
+            $rawEmail = $data['customer_email'] ?? $data['email_address'] ?? $data['email'] ?? null;
+            $customerEmail = (!empty($rawEmail) && trim($rawEmail) !== '') ? strtolower(trim($rawEmail)) : null;
             $customerPhone = $data['customer_phone'] ?? '';
             $deliveryAddress = $data['delivery_address'] ?? '';
 
@@ -34,23 +35,7 @@ class OrderService
                     })->first();
 
                     if ($user) {
-                        $uid = $user->user_id ?? $user->id ?? null;
-                        if ($uid && is_numeric($uid)) {
-                            $userId = (int) $uid;
-                        }
-                    }
-                } catch (\Throwable $e) {}
-            }
-
-            // Fallback to first user in database if not found
-            if (!$userId) {
-                try {
-                    $firstUser = DB::table('users')->first();
-                    if ($firstUser) {
-                        $uid = $firstUser->user_id ?? $firstUser->id ?? null;
-                        if ($uid && is_numeric($uid)) {
-                            $userId = (int) $uid;
-                        }
+                        $userId = $user->user_id ?? $user->id ?? null;
                     }
                 } catch (\Throwable $e) {}
             }
@@ -98,7 +83,12 @@ class OrderService
                 if ($prod) {
                     $rawPid = $prod->product_id ?? $prod->id ?? null;
                     if ($rawPid && is_numeric($rawPid)) {
-                        $prodId = (int) $rawPid;
+                        $candidateId = (int) $rawPid;
+                        try {
+                            if (DB::table('products')->where('product_id', $candidateId)->exists()) {
+                                $prodId = $candidateId;
+                            }
+                        } catch (\Throwable $e) {}
                     }
                 }
 
@@ -268,7 +258,8 @@ class OrderService
         ?string $email = null, 
         ?array $orderNumbers = null, 
         ?string $phone = null, 
-        ?string $status = null
+        ?string $status = null,
+        bool $allowAll = false
     ): array {
         $query = Order::with(['items', 'latestPayment'])->orderBy('created_at', 'desc');
 
@@ -276,15 +267,52 @@ class OrderService
             $query->where('status', strtoupper($status));
         }
 
-        if ($orderNumbers && !empty($orderNumbers)) {
-            $query->whereIn('order_number', $orderNumbers);
-        } elseif ($email && trim($email) !== '') {
+        $hasFilter = false;
+
+        // 1. Logged in customer filter: search by customer email strictly
+        if ($email && trim($email) !== '') {
+            $hasFilter = true;
             $targetEmail = strtolower(trim($email));
-            $query->where(function ($q) use ($targetEmail) {
-                $q->whereRaw('LOWER(customer_email) = ?', [$targetEmail]);
-            });
+            $query->whereRaw('LOWER(customer_email) = ?', [$targetEmail]);
+        } elseif ($orderNumbers && !empty($orderNumbers)) {
+            // 2. Guest customer filter: search ONLY by specific guest order numbers on this device
+            // Strict Isolation: Guests can NEVER see orders belonging to registered accounts!
+            $hasFilter = true;
+            $query->whereIn('order_number', $orderNumbers)
+                  ->whereNull('user_id');
+
+            try {
+                $registeredEmails = DB::table('users')
+                    ->whereNotNull('email')
+                    ->pluck('email')
+                    ->map(fn($e) => strtolower(trim($e)))
+                    ->filter()
+                    ->toArray();
+
+                $registeredEmailAddresses = DB::table('users')
+                    ->whereNotNull('email_address')
+                    ->pluck('email_address')
+                    ->map(fn($e) => strtolower(trim($e)))
+                    ->filter()
+                    ->toArray();
+
+                $allRegisteredEmails = array_values(array_unique(array_merge($registeredEmails, $registeredEmailAddresses)));
+
+                if (!empty($allRegisteredEmails)) {
+                    $query->where(function ($q) use ($allRegisteredEmails) {
+                        $q->whereNull('customer_email')
+                          ->orWhereNotIn(DB::raw('LOWER(customer_email)'), $allRegisteredEmails);
+                    });
+                }
+            } catch (\Throwable $e) {}
         } elseif ($phone && trim($phone) !== '') {
+            $hasFilter = true;
             $query->where('notes', 'like', "%{$phone}%");
+        }
+
+        // If no filter is provided and not admin (allowAll = false), return empty array
+        if (!$hasFilter && !$allowAll) {
+            return [];
         }
 
         $orders = $query->get();
@@ -312,6 +340,8 @@ class OrderService
         return [
             'id' => $order->order_id,
             'order_id' => (string) $order->order_id,
+            'user_id' => $order->user_id,
+            'customer_id' => $order->customer_id ?? $order->user_id,
             'order_number' => $order->order_number,
             'orderId' => $order->order_number,
             'status' => strtoupper($order->status),

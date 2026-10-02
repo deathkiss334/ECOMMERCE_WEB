@@ -68,11 +68,36 @@ Route::post('/payments/qr-confirm', [QrPaymentController::class, 'confirm']);
 
 // ── Customer Order History & Real-Time Tracking ───────────────────────────────
 Route::get('/orders', [OrderHistoryController::class, 'index']);
-Route::get('/orders/track/{order_number}', function ($order_number) {
+Route::get('/orders/track/{order_number}', function (\Illuminate\Http\Request $request, $order_number) {
     $order = \App\Services\OrderService::findOrder($order_number);
     if (!$order) {
         abort(404, 'Order not found');
     }
+
+    $callerEmail = strtolower(trim($request->query('email') ?? ''));
+    $orderEmail = strtolower(trim($order['customer_email'] ?? ''));
+
+    // Check if this order belongs to a registered customer account
+    $isRegisteredOrder = !empty($order['user_id']);
+    if (!$isRegisteredOrder && !empty($orderEmail)) {
+        try {
+            $isRegisteredOrder = \Illuminate\Support\Facades\DB::table('users')
+                ->where(function ($q) use ($orderEmail) {
+                    $q->whereRaw('LOWER(email) = ?', [$orderEmail])
+                      ->orWhereRaw('LOWER(email_address) = ?', [$orderEmail]);
+                })->exists();
+        } catch (\Throwable $e) {}
+    }
+
+    // If order belongs to a registered customer, do not allow unauthenticated guest to view it
+    if ($isRegisteredOrder) {
+        if (empty($callerEmail) || $callerEmail !== $orderEmail) {
+            return response()->json([
+                'message' => 'This order belongs to a registered customer. Please sign in to your account to view this order.',
+            ], 403);
+        }
+    }
+
     return response()->json($order);
 });
 Route::post('/orders/reviews', [OrderHistoryController::class, 'storeReview']);

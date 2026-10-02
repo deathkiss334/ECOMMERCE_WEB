@@ -32,7 +32,9 @@ class CheckoutService {
           'second_name': secondName ?? '',
           'middle_name': middleName ?? '',
           'birthday': birthday ?? '',
+          'customer_email': emailAddress ?? '',
           'email_address': emailAddress ?? '',
+          'email': emailAddress ?? '',
           'is_verified': isVerified,
         }),
       );

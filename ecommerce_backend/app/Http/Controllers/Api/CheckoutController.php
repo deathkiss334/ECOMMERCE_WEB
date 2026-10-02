@@ -18,10 +18,22 @@ class CheckoutController extends Controller
             'payment_method' => 'required|string',
             'customer_name' => 'required|string|max:120',
             'customer_email' => 'nullable|string|max:150',
+            'email_address' => 'nullable|string|max:150',
+            'email' => 'nullable|string|max:150',
             'customer_phone' => 'nullable|string|max:30',
             'delivery_address' => 'nullable|string',
             'order_type' => 'nullable|string|in:DELIVERY,DINE_IN,delivery,dine_in,pickup,PICKUP,takeout,TAKEOUT',
         ]);
+
+        $resolvedEmail = $validated['customer_email'] 
+            ?? $validated['email_address'] 
+            ?? $validated['email'] 
+            ?? $request->input('customer_email') 
+            ?? $request->input('email_address') 
+            ?? $request->input('email');
+        if (!empty($resolvedEmail)) {
+            $validated['customer_email'] = strtolower(trim($resolvedEmail));
+        }
 
         $rawOrderType = strtoupper($validated['order_type'] ?? 'DELIVERY');
         $isDelivery = !in_array($rawOrderType, ['PICKUP', 'DINE_IN', 'DINE-IN', 'TAKEOUT']);

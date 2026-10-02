@@ -16,7 +16,7 @@ class AdminController extends Controller
     public function orders(Request $request): JsonResponse
     {
         $status = $request->query('status');
-        $orders = OrderService::listOrders(null, null, null, $status);
+        $orders = OrderService::listOrders(null, null, null, $status, true);
 
         return response()->json($orders, Response::HTTP_OK);
     }

@@ -11,7 +11,6 @@ import '../widgets/order_history_sheet.dart';
 import '../services/guest_order_storage.dart';
 import 'sheets/item_detail_bottom_sheet.dart';
 import 'sheets/cart_bottom_sheet.dart';
-import 'sheets/profile_bottom_sheet.dart';
 
 List<FoodItem> foodItemsData = [];
 
@@ -32,17 +31,20 @@ class _HomeScreenState extends State<HomeScreen> {
     // 1. Restore authenticated user profile on app startup / page refresh (F5)
     AuthApiService.loadSavedSession().then((savedUser) {
       if (mounted && savedUser != null && savedUser.isVerified) {
+        FirebaseUserService.setCurrentUser(savedUser);
         setState(() {
           _currentUser = savedUser;
+          _sessionOrderNumbers.clear();
         });
-      }
-    });
-    // 2. Restore guest orders
-    GuestOrderStorage.getStoredOrderNumbers().then((stored) {
-      if (mounted && stored.isNotEmpty) {
-        setState(() {
-          for (final o in stored) {
-            if (!_sessionOrderNumbers.contains(o)) _sessionOrderNumbers.add(o);
+      } else {
+        // 2. Only restore guest device orders if running in Guest mode
+        GuestOrderStorage.getStoredOrderNumbers().then((stored) {
+          if (mounted && stored.isNotEmpty && !_currentUser.isVerified) {
+            setState(() {
+              for (final o in stored) {
+                if (!_sessionOrderNumbers.contains(o)) _sessionOrderNumbers.add(o);
+              }
+            });
           }
         });
       }
@@ -849,10 +851,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
                             if (result.containsKey('order_number') || result.containsKey('orderId')) {
                               final newOrderNum = (result['order_number'] ?? result['orderId']).toString();
-                              if (!_sessionOrderNumbers.contains(newOrderNum)) {
-                                _sessionOrderNumbers.add(newOrderNum);
+                              // Strictly isolate: only save order number in session/device storage for unauthenticated guest orders!
+                              if (!_currentUser.isVerified) {
+                                if (!_sessionOrderNumbers.contains(newOrderNum)) {
+                                  _sessionOrderNumbers.add(newOrderNum);
+                                }
+                                await GuestOrderStorage.saveOrderNumber(newOrderNum);
                               }
-                              await GuestOrderStorage.saveOrderNumber(newOrderNum);
                             }
 
                             Navigator.pop(context); // Pop loading
@@ -960,23 +965,16 @@ class _HomeScreenState extends State<HomeScreen> {
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (ctx) => OrderHistorySheet(
-        sessionOrderNumbers: _sessionOrderNumbers,
-        userPhone: _currentUser.phoneNumber,
-        userEmail: _currentUser.emailAddress,
-        userName: _currentUser.firstName,
+        sessionOrderNumbers: _currentUser.isVerified ? [] : _sessionOrderNumbers,
+        userPhone: _currentUser.isVerified && _currentUser.phoneNumber.isNotEmpty ? _currentUser.phoneNumber : null,
+        userEmail: _currentUser.isVerified && _currentUser.emailAddress.isNotEmpty ? _currentUser.emailAddress : null,
+        userName: _currentUser.isVerified && _currentUser.firstName.isNotEmpty ? _currentUser.firstName : null,
       ),
     );
   }
 
   void _showProfileModal() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (ctx) => ProfileBottomSheet(
-        
-      ),
-    );
+    _showOrdersModal();
   }
 
   @override
@@ -1186,8 +1184,11 @@ class _HomeScreenState extends State<HomeScreen> {
             const SizedBox(width: 6),
             TextButton.icon(
               onPressed: () async {
-                await AuthApiService.clearSession();
-                setState(() => _currentUser = UserModel.guest());
+                await AuthApiService.logout();
+                setState(() {
+                  _currentUser = UserModel.guest();
+                  _sessionOrderNumbers.clear();
+                });
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(content: Text('Logged Out successfully')),
@@ -1201,7 +1202,10 @@ class _HomeScreenState extends State<HomeScreen> {
               onPressed: () async {
                 await Navigator.pushNamed(context, '/login');
                 final saved = await AuthApiService.loadSavedSession();
-                setState(() => _currentUser = saved ?? FirebaseUserService.currentUser);
+                setState(() {
+                  _currentUser = saved ?? FirebaseUserService.currentUser;
+                  _sessionOrderNumbers.clear();
+                });
               },
               icon: const Icon(Icons.login, size: 18, color: Colors.black87),
               label: const Text('Log In', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w600)),
