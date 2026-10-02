@@ -9,20 +9,47 @@ class ProductTable extends Model
 {
     use HasFactory;
 
-    protected $table = 'product_table';
+    protected $table = 'products';
     protected $primaryKey = 'product_id';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    public $incrementing = true;
 
     protected $fillable = [
         'product_id',
-        'product_quantity',
-        'product_type',
+        'product_name',
+        'product_img',
+        'product_desc',
+        'product_qty',
+        'product_rating',
+        'product_category',
         'product_price',
+        'name',
+        'base_price',
     ];
 
     protected $casts = [
-        'product_quantity' => 'integer',
+        'product_qty' => 'integer',
         'product_price' => 'double',
+        'product_rating' => 'double',
     ];
+
+    public function getProductTypeAttribute()
+    {
+        return $this->attributes['product_name'] ?? $this->attributes['product_type'] ?? '';
+    }
+
+    public function setProductTypeAttribute($value)
+    {
+        $this->attributes['product_name'] = $value;
+        $this->attributes['name'] = $value;
+    }
+
+    public function getProductQuantityAttribute()
+    {
+        return $this->attributes['product_qty'] ?? $this->attributes['product_quantity'] ?? 0;
+    }
+
+    public function setProductQuantityAttribute($value)
+    {
+        $this->attributes['product_qty'] = $value;
+    }
 }

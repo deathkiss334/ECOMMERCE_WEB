@@ -15,12 +15,13 @@ return new class extends Migration
             return;
         }
 
-        // Check if users already has password_hash column
-        $hasPasswordHash = Schema::hasColumn('users', 'password_hash');
-        $hasPassword = Schema::hasColumn('users', 'password');
+        $idColumn = Schema::hasColumn('users', 'user_id') ? 'user_id' : (Schema::hasColumn('users', 'id') ? 'id' : 'rowid');
+        $emailColumn = Schema::hasColumn('users', 'email_address') ? 'email_address' : 'email';
+        $pwdColumn = Schema::hasColumn('users', 'password_hash') ? 'password_hash' : (Schema::hasColumn('users', 'password') ? 'password' : 'NULL');
+        $googleColumn = Schema::hasColumn('users', 'google_id') ? 'google_id' : 'NULL';
 
-        if ($hasPasswordHash && !$hasPassword) {
-            // Table already upgraded
+        // Check if users already aligned
+        if (Schema::hasColumn('users', 'user_id') && Schema::hasColumn('users', 'password_hash') && Schema::hasColumn('users', 'first_name')) {
             return;
         }
 
@@ -28,14 +29,22 @@ return new class extends Migration
 
         DB::statement("
             CREATE TABLE IF NOT EXISTS users_temp (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                email TEXT UNIQUE NOT NULL COLLATE NOCASE,
+                user_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                first_name TEXT NULL,
+                last_name TEXT NULL,
+                birthday TEXT NULL,
+                address TEXT NULL,
+                phone_num TEXT NULL,
+                email_address TEXT UNIQUE NULL,
+                password TEXT NULL,
+                name TEXT NULL,
+                email TEXT NULL,
                 password_hash TEXT NULL,
-                name TEXT NOT NULL,
                 phone TEXT NULL,
-                role TEXT NOT NULL DEFAULT 'customer' CHECK(role IN ('customer', 'admin')),
-                auth_provider TEXT NOT NULL DEFAULT 'local' CHECK(auth_provider IN ('local', 'google')),
-                google_id TEXT UNIQUE NULL,
+                role TEXT NOT NULL DEFAULT 'customer',
+                auth_provider TEXT NOT NULL DEFAULT 'local',
+                google_id TEXT NULL,
+                remember_token TEXT NULL,
                 created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
                 updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
             );
@@ -48,12 +57,14 @@ return new class extends Migration
             : "'customer'";
 
         DB::statement("
-            INSERT INTO users_temp (id, email, password_hash, name, phone, role, auth_provider, google_id, created_at, updated_at)
+            INSERT INTO users_temp (user_id, email_address, email, password_hash, password, name, phone_num, role, auth_provider, google_id, created_at, updated_at)
             SELECT 
-                id, 
-                LOWER(TRIM(email)), 
+                {$idColumn}, 
+                LOWER(TRIM({$emailColumn})), 
+                LOWER(TRIM({$emailColumn})), 
                 {$pwdColumn}, 
-                name, 
+                {$pwdColumn}, 
+                COALESCE(name, 'User'), 
                 NULL, 
                 {$roleExpr}, 
                 CASE WHEN {$googleColumn} IS NOT NULL AND {$googleColumn} != '' THEN 'google' ELSE 'local' END, 
@@ -65,10 +76,6 @@ return new class extends Migration
 
         DB::statement("DROP TABLE users;");
         DB::statement("ALTER TABLE users_temp RENAME TO users;");
-
-        DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email);");
-        DB::statement("CREATE UNIQUE INDEX IF NOT EXISTS idx_users_google_id ON users(google_id);");
-        DB::statement("CREATE INDEX IF NOT EXISTS idx_users_role ON users(role);");
 
         DB::statement('PRAGMA foreign_keys=ON;');
     }

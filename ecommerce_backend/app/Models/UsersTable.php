@@ -9,18 +9,30 @@ class UsersTable extends Model
 {
     use HasFactory;
 
-    protected $table = 'users_table';
-    protected $primaryKey = 'email_address';
-    public $incrementing = false;
-    protected $keyType = 'string';
+    protected $table = 'users';
+    protected $primaryKey = 'user_id';
+    public $incrementing = true;
 
     protected $fillable = [
+        'user_id',
         'first_name',
         'middle_name',
         'last_name',
         'birthday',
         'address',
+        'phone_num',
         'email_address',
-        'phone_number',
+        'password',
     ];
+
+    public function getPhoneNumberAttribute()
+    {
+        return $this->attributes['phone_num'] ?? $this->attributes['phone_number'] ?? '';
+    }
+
+    public function setPhoneNumberAttribute($value)
+    {
+        $this->attributes['phone_num'] = $value;
+        $this->attributes['phone'] = $value;
+    }
 }

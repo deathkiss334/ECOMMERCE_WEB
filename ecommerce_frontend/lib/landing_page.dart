@@ -139,10 +139,6 @@ class _LandingPageState extends State<LandingPage> {
                   _navLink('Browse Menu', onTap: () {
                     Navigator.pushNamed(context, '/shop');
                   }),
-                  const SizedBox(width: 24),
-                  _navLink('Admin Portal', onTap: () {
-                    Navigator.pushNamed(context, '/admin');
-                  }),
                 ],
               ),
 
@@ -192,8 +188,6 @@ class _LandingPageState extends State<LandingPage> {
                     onSelected: (value) {
                       if (value == 'browse') {
                         Navigator.pushNamed(context, '/shop');
-                      } else if (value == 'admin') {
-                        Navigator.pushNamed(context, '/admin');
                       } else if (value == 'login') {
                         Navigator.pushNamed(context, '/login');
                       }
@@ -206,16 +200,6 @@ class _LandingPageState extends State<LandingPage> {
                             Icon(Icons.restaurant_menu, size: 18, color: brandOrange),
                             SizedBox(width: 8),
                             Text('Browse Menu'),
-                          ],
-                        ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'admin',
-                        child: Row(
-                          children: [
-                            Icon(Icons.dashboard_outlined, size: 18, color: Color(0xFF2563EB)),
-                            SizedBox(width: 8),
-                            Text('Admin Portal'),
                           ],
                         ),
                       ),

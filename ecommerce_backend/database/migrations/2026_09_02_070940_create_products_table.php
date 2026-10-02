@@ -12,12 +12,21 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('products', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('category_id')->constrained()->cascadeOnDelete();
-            $table->string('name');
-            $table->string('slug')->unique();
+            $table->id('product_id');
+            $table->string('product_name')->nullable();
+            $table->text('product_img')->nullable();
+            $table->text('product_desc')->nullable();
+            $table->integer('product_qty')->default(0);
+            $table->decimal('product_rating', 3, 2)->default(0.00);
+            $table->string('product_category')->nullable();
+            $table->decimal('product_price', 10, 2)->default(0.00);
+
+            // Compatibility columns
+            $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
+            $table->string('name')->nullable();
+            $table->string('slug')->nullable();
             $table->text('description')->nullable();
-            $table->decimal('base_price', 10, 2);
+            $table->decimal('base_price', 10, 2)->default(0.00);
             $table->decimal('rating_avg', 3, 2)->default(0.00);
             $table->integer('total_reviews')->default(0);
             $table->boolean('is_active')->default(true);

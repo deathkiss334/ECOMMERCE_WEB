@@ -13,19 +13,20 @@ class User extends Authenticatable
     /** @use HasFactory<UserFactory> */
     use HasApiTokens, HasFactory, Notifiable;
 
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'users';
+    protected $primaryKey = 'user_id';
 
-    /**
-     * The attributes that are mass assignable.
-     *
-     * @var array<int, string>
-     */
     protected $fillable = [
+        'user_id',
+        'first_name',
+        'last_name',
+        'birthday',
+        'address',
+        'phone_num',
+        'email_address',
+        'password',
+
+        // Compatibility fields
         'name',
         'email',
         'password_hash',
@@ -35,58 +36,89 @@ class User extends Authenticatable
         'google_id',
     ];
 
-    /**
-     * The attributes that should be hidden for serialization.
-     *
-     * @var array<int, string>
-     */
     protected $hidden = [
+        'password',
         'password_hash',
         'remember_token',
     ];
 
-    /**
-     * Get the name of the unique identifier for user password.
-     */
     public function getAuthPasswordName(): string
     {
-        return 'password_hash';
+        return $this->password_hash ? 'password_hash' : 'password';
     }
 
-    /**
-     * Get the password for the user.
-     */
     public function getAuthPassword()
     {
-        return $this->password_hash;
+        return $this->password_hash ?? $this->password;
     }
 
-    /**
-     * Check if user is an administrator.
-     */
+    // Accessors & Mutators for ERD vs standard Laravel field compatibility
+    public function getIdAttribute()
+    {
+        return $this->attributes['user_id'] ?? $this->attributes['id'] ?? null;
+    }
+
+    public function getEmailAttribute()
+    {
+        return $this->attributes['email_address'] ?? $this->attributes['email'] ?? null;
+    }
+
+    public function setEmailAttribute($value)
+    {
+        $this->attributes['email_address'] = $value;
+        $this->attributes['email'] = $value;
+    }
+
+    public function getPhoneAttribute()
+    {
+        return $this->attributes['phone_num'] ?? $this->attributes['phone'] ?? null;
+    }
+
+    public function setPhoneAttribute($value)
+    {
+        $this->attributes['phone_num'] = $value;
+        $this->attributes['phone'] = $value;
+    }
+
+    public function getNameAttribute()
+    {
+        if (!empty($this->attributes['name'])) {
+            return $this->attributes['name'];
+        }
+        return trim(($this->attributes['first_name'] ?? '') . ' ' . ($this->attributes['last_name'] ?? ''));
+    }
+
+    public function setNameAttribute($value)
+    {
+        $this->attributes['name'] = $value;
+        $parts = explode(' ', $value, 2);
+        $this->attributes['first_name'] = $parts[0] ?? '';
+        $this->attributes['last_name'] = $parts[1] ?? '';
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === 'admin';
     }
 
-    /**
-     * Check if user is a customer.
-     */
     public function isCustomer(): bool
     {
         return $this->role === 'customer';
     }
 
-    /**
-     * Return safe public user profile representation without sensitive attributes.
-     */
     public function toProfileArray(): array
     {
         return [
-            'id' => $this->id,
+            'user_id' => $this->user_id,
+            'id' => $this->user_id,
+            'first_name' => $this->first_name,
+            'last_name' => $this->last_name,
             'name' => $this->name,
-            'email' => $this->email,
-            'phone' => $this->phone,
+            'birthday' => $this->birthday,
+            'address' => $this->address,
+            'phone_num' => $this->phone_num,
+            'email_address' => $this->email_address,
+            'email' => $this->email_address,
             'role' => $this->role,
             'auth_provider' => $this->auth_provider,
             'created_at' => $this->created_at?->toIso8601String(),
@@ -94,11 +126,6 @@ class User extends Authenticatable
         ];
     }
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
     protected function casts(): array
     {
         return [

@@ -11,45 +11,52 @@ class ProductTableSeeder extends Seeder
     {
         $products = [
             [
-                'product_id' => 'PROD-101',
-                'product_quantity' => 50,
-                'product_type' => 'Chicken Inasal',
+                'product_name' => 'Chicken Inasal',
+                'product_qty' => 50,
+                'product_category' => 'Meals & Combos',
                 'product_price' => 189.00,
+                'product_desc' => 'Grilled chicken marinated in lemongrass, calamansi, and spices.',
+                'product_rating' => 4.8,
             ],
             [
-                'product_id' => 'PROD-102',
-                'product_quantity' => 30,
-                'product_type' => 'Pork Sisig',
+                'product_name' => 'Pork Sisig',
+                'product_qty' => 30,
+                'product_category' => 'Meals & Combos',
                 'product_price' => 220.00,
+                'product_desc' => 'Sizzling minced pork topped with calamansi and chili peppers.',
+                'product_rating' => 4.9,
             ],
             [
-                'product_id' => 'PROD-103',
-                'product_quantity' => 45,
-                'product_type' => 'Beef Bulalo',
+                'product_name' => 'Beef Bulalo',
+                'product_qty' => 45,
+                'product_category' => 'Meals & Combos',
                 'product_price' => 350.00,
+                'product_desc' => 'Traditional beef shank soup with bone marrow and fresh vegetables.',
+                'product_rating' => 4.7,
             ],
             [
-                'product_id' => 'PROD-104',
-                'product_quantity' => 20,
-                'product_type' => 'Halo-Halo Special',
+                'product_name' => 'Halo-Halo Special',
+                'product_qty' => 20,
+                'product_category' => 'Desserts',
                 'product_price' => 120.00,
+                'product_desc' => 'Shaved ice dessert with sweet beans, saba, ube, and leche flan.',
+                'product_rating' => 4.9,
             ],
             [
-                'product_id' => 'PROD-105',
-                'product_quantity' => 60,
-                'product_type' => 'Kare-Kare',
+                'product_name' => 'Kare-Kare',
+                'product_qty' => 60,
+                'product_category' => 'Meals & Combos',
                 'product_price' => 290.00,
+                'product_desc' => 'Rich peanut stew with oxtail, beef tripe, and eggplant.',
+                'product_rating' => 4.6,
             ],
         ];
 
         foreach ($products as $data) {
-            $product = ProductTable::updateOrCreate(
-                ['product_id' => $data['product_id']],
+            Product::updateOrCreate(
+                ['product_name' => $data['product_name']],
                 $data
             );
-
-            // Sync to Firebase Cloud Firestore product_table collection
-            FirebaseService::syncProductTable($product);
         }
     }
 }

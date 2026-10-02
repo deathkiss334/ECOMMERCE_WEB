@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('product_images', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('product_id')->constrained()->cascadeOnDelete();
+            $table->foreignId('product_id')->constrained('products', 'product_id')->cascadeOnDelete();
             $table->string('image_url');
             $table->integer('display_order')->default(0);
             $table->boolean('is_primary')->default(false);

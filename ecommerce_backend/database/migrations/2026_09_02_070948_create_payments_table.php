@@ -12,15 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('payments', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            $table->foreignId('order_id')->constrained();
+            $table->string('payment_id')->primary();
+            $table->foreignId('order_id')->constrained('orders', 'order_id')->cascadeOnDelete();
             $table->string('payment_method');
-            $table->string('gateway');
-            $table->string('gateway_reference_id')->nullable()->unique();
             $table->decimal('amount', 10, 2);
-            $table->string('currency')->default('PHP');
+            $table->string('transaction_id')->nullable();
+            $table->string('payment_status')->default('pending');
+            $table->string('gateway')->nullable();
+            $table->string('gateway_reference_id')->nullable();
             $table->string('status')->default('pending');
-            $table->json('metadata')->nullable();
             $table->timestamps();
         });
     }

@@ -5,7 +5,6 @@ namespace Database\Seeders;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\Hash;
 use App\Models\User;
-use Database\Seeders\StoreDataSeeder;
 
 class DatabaseSeeder extends Seeder
 {
@@ -13,8 +12,10 @@ class DatabaseSeeder extends Seeder
     {
         // Add a primary test customer
         User::firstOrCreate(
-            ['email' => 'customer@example.com'],
+            ['email_address' => 'customer@example.com'],
             [
+                'first_name' => 'Demo',
+                'last_name' => 'User',
                 'name' => 'Demo User',
                 'password_hash' => Hash::make('Customer@12345'),
                 'phone' => '09123456789',
@@ -38,6 +39,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             StoreDataSeeder::class,
             ProductTableSeeder::class,
+            OrderSeeder::class,
         ]);
     }
 }

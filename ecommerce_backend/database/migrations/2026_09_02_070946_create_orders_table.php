@@ -12,16 +12,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('orders', function (Blueprint $table) {
-            $table->id();
-            $table->string('order_number')->unique();
-            $table->foreignId('user_id')->constrained();
+            $table->id('order_id');
+            $table->string('order_number')->nullable();
+            $table->foreignId('user_id')->nullable()->constrained('users', 'user_id');
+            $table->foreignId('customer_id')->nullable()->constrained('users', 'user_id');
             $table->foreignId('user_address_id')->nullable()->constrained('user_addresses');
+            $table->string('payment_method')->nullable();
+            $table->decimal('total_paid', 10, 2)->default(0.00);
+            $table->string('order_type')->nullable();
             $table->string('status')->default('pending');
             $table->string('payment_status')->default('unpaid');
-            $table->decimal('subtotal', 10, 2);
-            $table->decimal('delivery_fee', 10, 2)->default(0);
-            $table->decimal('discount_amount', 10, 2)->default(0);
-            $table->decimal('total_amount', 10, 2);
+            $table->decimal('subtotal', 10, 2)->default(0.00);
+            $table->decimal('delivery_fee', 10, 2)->default(0.00);
+            $table->decimal('discount_amount', 10, 2)->default(0.00);
+            $table->decimal('total_amount', 10, 2)->default(0.00);
             $table->text('notes')->nullable();
             $table->timestamps();
         });
