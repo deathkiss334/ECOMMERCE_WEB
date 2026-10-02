@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
-use App\Services\FirebaseService;
 
 class OrderController extends Controller
 {
@@ -31,9 +30,6 @@ class OrderController extends Controller
         }
 
         $order->save();
-
-        // Synchronize updated order status to Firebase in real-time
-        FirebaseService::syncOrder($order);
         
         return redirect()->back()->with('success', 'Order #' . $order->order_number . ' status updated to ' . strtoupper($order->status) . '!');
     }
@@ -50,8 +46,6 @@ class OrderController extends Controller
             'payment_status' => 'paid',
             'status' => 'preparing',
         ]);
-
-        FirebaseService::syncOrder($order);
 
         return redirect()->back()->with('success', 'Order #' . $order->order_number . ' GCash payment verified! Order is now PREPARING in the kitchen.');
     }

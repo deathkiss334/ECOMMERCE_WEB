@@ -4,7 +4,6 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\ProductTable;
-use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 
 class ProductTableController extends Controller

@@ -6,7 +6,6 @@ use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Order;
 use App\Models\PaymentTransaction;
-use App\Services\FirebaseService;
 use Symfony\Component\HttpFoundation\Response;
 use Illuminate\Support\Str;
 
@@ -79,8 +78,6 @@ class QrPaymentController extends Controller
                 'submitted_at' => now()->toIso8601String(),
             ]),
         ]);
-
-        FirebaseService::syncOrder($order);
 
         return response()->json([
             'success' => true,

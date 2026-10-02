@@ -4,7 +4,6 @@ namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use App\Models\ProductTable;
-use App\Services\FirebaseService;
 
 class ProductTableSeeder extends Seeder
 {

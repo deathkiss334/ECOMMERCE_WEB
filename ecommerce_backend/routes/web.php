@@ -5,11 +5,11 @@ use App\Http\Controllers\Admin\OrderController;
 use App\Models\Order;
 use App\Models\Payment;
 use App\Models\PaymentTransaction;
-use App\Services\FirebaseService;
 use Illuminate\Http\Request;
 
+// ── Root Endpoint: Clean API Status Dashboard (Clarifies Backend vs Frontend) ──
 Route::get('/', function () {
-    return redirect('/admin/orders');
+    return view('welcome_api');
 });
 
 // Phase 4: Admin Dashboard Routes
@@ -49,9 +49,6 @@ Route::post('/sandbox/checkout/{order_number}/pay', function (Request $request, 
         'status' => 'preparing',
         'payment_status' => 'paid'
     ]);
-    
-    // 3. Real-time sync to Firebase
-    FirebaseService::syncOrder($order);
-    
-    return view('sandbox.success', compact('order'));
+
+    return redirect()->back()->with('success', 'Sandbox payment simulated successfully! Order marked as PAID.');
 });

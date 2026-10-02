@@ -1,12 +1,9 @@
-import 'dart:convert';
-import 'package:http/http.dart' as http;
 import '../models/user_model.dart';
 import '../models/users_table_model.dart';
-import 'firebase_order_service.dart';
 import 'firebase_users_table_service.dart';
 
-/// FirebaseUserService manages real-time Cloud Firestore fetching
-/// and local caching for Verified Users vs Guest Accounts.
+/// UserService manages authenticated vs guest account profiles
+/// and persists customer updates directly into SQLite via Laravel REST API.
 class FirebaseUserService {
   static UserModel? _cachedUser;
 
@@ -20,7 +17,38 @@ class FirebaseUserService {
     _cachedUser = user;
   }
 
-  /// Fetch Verified User profile from Cloud Firestore REST API
+  /// Check if a user with this email has existing profile credentials in users_table.
+  /// Returns null if user has never completed registration.
+  static Future<UserModel?> findUserProfile(String email) async {
+    final cleanEmail = email.toLowerCase().trim();
+    if (cleanEmail.isEmpty) return null;
+
+    if (cleanEmail == 'admin@example.com' || cleanEmail == 'admin') {
+      return UserModel.adminMock();
+    }
+
+    try {
+      final users = await FirebaseUsersTableService.fetchUsersFromFirestore();
+      for (final u in users) {
+        if (u.emailAddress.toLowerCase().trim() == cleanEmail && u.phoneNumber.isNotEmpty) {
+          return UserModel(
+            firstName: u.firstName,
+            secondName: u.lastName,
+            middleName: u.middleName,
+            birthday: u.birthday,
+            address: u.address,
+            phoneNumber: u.phoneNumber,
+            emailAddress: u.emailAddress,
+            isVerified: true,
+          );
+        }
+      }
+    } catch (_) {}
+
+    return null;
+  }
+
+  /// Fetch Verified User profile from Laravel DB
   static Future<UserModel> fetchUserProfile(String email) async {
     if (email.toLowerCase() == 'admin@example.com' || email.toLowerCase() == 'admin') {
       final adminUser = UserModel.adminMock();
@@ -28,45 +56,18 @@ class FirebaseUserService {
       return adminUser;
     }
 
-    if (!FirebaseOrderService.isFirebaseConfigured) {
-      final defaultUser = UserModel.defaultVerified();
-      _cachedUser = defaultUser;
-      return defaultUser;
+    final existing = await findUserProfile(email);
+    if (existing != null) {
+      _cachedUser = existing;
+      return existing;
     }
-
-    try {
-      final docId = email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-      final url = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/${FirebaseOrderService.firebaseProjectId}/databases/(default)/documents/users/$docId',
-      );
-      final response = await http.get(url);
-
-      if (response.statusCode == 200) {
-        final Map<String, dynamic> data = json.decode(response.body);
-        final fields = data['fields'] ?? {};
-
-        final user = UserModel(
-          firstName: fields['first_name']?['stringValue'] ?? '',
-          secondName: fields['second_name']?['stringValue'] ?? fields['last_name']?['stringValue'] ?? '',
-          middleName: fields['middle_name']?['stringValue'] ?? '',
-          birthday: fields['birthday']?['stringValue'] ?? '',
-          address: fields['address']?['stringValue'] ?? '',
-          phoneNumber: fields['phone_number']?['stringValue'] ?? '',
-          emailAddress: fields['email_address']?['stringValue'] ?? '',
-          isVerified: fields['is_verified']?['booleanValue'] ?? true,
-        );
-
-        _cachedUser = user;
-        return user;
-      }
-    } catch (_) {}
 
     final defaultUser = UserModel.defaultVerified();
     _cachedUser = defaultUser;
     return defaultUser;
   }
 
-  /// Push/Sync Verified User profile updates to Firebase Cloud Firestore and users_table
+  /// Push/Sync Verified User profile updates to users_table in Laravel SQLite
   static Future<bool> saveUserProfileToFirebase(UserModel user) async {
     _cachedUser = user;
 
@@ -80,46 +81,10 @@ class FirebaseUserService {
       phoneNumber: user.phoneNumber,
     );
 
-    // 1. Sync to users_table collection & Laravel REST API
     try {
-      await FirebaseUsersTableService.saveUserToFirestore(usersTableModel);
-    } catch (_) {}
-
-    if (!user.isVerified || !FirebaseOrderService.isFirebaseConfigured) {
-      return true;
-    }
-
-    // 2. Sync to users collection in Cloud Firestore REST API
-    try {
-      final docId = user.emailAddress.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-      final url = Uri.parse(
-        'https://firestore.googleapis.com/v1/projects/${FirebaseOrderService.firebaseProjectId}/databases/(default)/documents/users/$docId',
-      );
-
-      final payload = {
-        'fields': {
-          'first_name': {'stringValue': user.firstName},
-          'second_name': {'stringValue': user.secondName},
-          'middle_name': {'stringValue': user.middleName},
-          'birthday': {'stringValue': user.birthday},
-          'address': {'stringValue': user.address},
-          'phone_number': {'stringValue': user.phoneNumber},
-          'email_address': {'stringValue': user.emailAddress},
-          'is_verified': {'booleanValue': user.isVerified},
-          'updated_at': {'stringValue': DateTime.now().toIso8601String()},
-        }
-      };
-
-      final response = await http.patch(
-        url,
-        headers: {'Content-Type': 'application/json'},
-        body: json.encode(payload),
-      );
-
-      return response.statusCode == 200;
+      return await FirebaseUsersTableService.saveUserToFirestore(usersTableModel);
     } catch (_) {
       return false;
     }
   }
 }
-

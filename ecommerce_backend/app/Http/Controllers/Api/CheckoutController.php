@@ -11,7 +11,6 @@ use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\ProductVariant;
-use App\Services\FirebaseService;
 
 class CheckoutController extends Controller
 {
