@@ -1072,18 +1072,22 @@ class _OrdersViewState extends State<OrdersView> {
               ],
 
               // Card Top Header Line
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 8,
+                spacing: 8,
                 children: [
-                  Row(
+                  Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 8,
                     children: [
                       Text(
                         'Order #${order.orderNumber}',
                         style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF0F172A)),
                       ),
-                      const SizedBox(width: 12),
                       _buildReadBadge(isRead),
-                      const SizedBox(width: 8),
                       _buildTypeBadge(order.orderTypeDisplay),
                     ],
                   ),
@@ -1413,10 +1417,14 @@ class _OrdersViewState extends State<OrdersView> {
               ],
 
               // Current Status Pill & Sequential Action Buttons Row
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                runSpacing: 10,
+                spacing: 12,
                 children: [
                   Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
                       const Text('Status: ', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
                       _buildStatusPill(order.statusDisplay, order.status),

@@ -368,20 +368,6 @@ class _HomePageState extends State<HomePage> {
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 10),
             child: TextButton(
-              onPressed: _scrollToTop,
-              child: const Text(
-                'Home',
-                style: TextStyle(
-                  color: ink,
-                  fontWeight: FontWeight.w700,
-                  fontSize: 14,
-                ),
-              ),
-            ),
-          ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 10),
-            child: TextButton(
               onPressed: _scrollToAbout,
               child: const Text(
                 'About us',

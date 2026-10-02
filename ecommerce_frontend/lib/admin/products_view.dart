@@ -563,23 +563,59 @@ class _ProductsViewState extends State<ProductsView> {
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                      SizedBox(height: 4),
+                      Text(
+                        'Direct DB Table: product_table',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
                     ],
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () => _showAddProductDialog(context),
-                    icon: const Icon(Icons.add, size: 18),
-                    label: const Text('Add Product'),
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: brandColor,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 14,
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      SizedBox(
+                        width: 220,
+                        child: TextField(
+                          controller: _searchCtrl,
+                          onChanged: (val) => setState(() => _searchQuery = val),
+                          decoration: InputDecoration(
+                            hintText: 'Search product_table...',
+                            prefixIcon: const Icon(Icons.search, size: 18),
+                            isDense: true,
+                            contentPadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 12,
+                            ),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            filled: true,
+                            fillColor: Colors.white,
+                          ),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
+                      const SizedBox(width: 12),
+                      ElevatedButton.icon(
+                        onPressed: () => _showAddProductDialog(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Add Product'),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: brandColor,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 14,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
                 ],
               ),
@@ -603,6 +639,7 @@ class _ProductsViewState extends State<ProductsView> {
                     final query = _searchQuery.toLowerCase();
                     return p.productId.toLowerCase().contains(query) ||
                         p.productType.toLowerCase().contains(query) ||
+                        p.productDescription.toLowerCase().contains(query) ||
                         p.productPrice.toString().contains(query);
                   }).toList();
 

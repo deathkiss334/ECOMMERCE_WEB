@@ -47,6 +47,7 @@ class FirebaseProductService {
       productId: docId,
       productQuantity: product.productQuantity,
       productType: product.productType,
+      productDescription: product.productDescription,
       productPrice: product.productPrice,
       productImage: product.productImage,
     );
