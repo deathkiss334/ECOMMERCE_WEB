@@ -1,5 +1,6 @@
 # Laravel Backend Ignores
 /ecommerce_backend/vendor/
+/ecommerce_backend/.env
 /ecommerce_backend/storage/*.key
 /ecommerce_backend/storage/framework/cache/*
 /ecommerce_backend/storage/framework/sessions/*
