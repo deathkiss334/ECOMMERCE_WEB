@@ -18,12 +18,19 @@ class User extends Authenticatable
 
     protected $fillable = [
         'email_address',
+        'email',
         'first_name',
         'last_name',
+        'name',
         'address',
         'phone_number',
+        'phone_num',
+        'phone',
         'user_id',
-        'user_role',
+        'role',
+        'password_hash',
+        'auth_provider',
+        'google_id',
         'created_at',
         'updated_at',
     ];
@@ -105,12 +112,12 @@ class User extends Authenticatable
 
     public function getRoleAttribute()
     {
-        return $this->attributes['user_role'] ?? 'customer';
+        return $this->attributes['role'] ?? 'customer';
     }
 
     public function setRoleAttribute($value)
     {
-        $this->attributes['user_role'] = $value;
+        $this->attributes['role'] = $value;
     }
 
     public function isAdmin(): bool
