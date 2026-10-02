@@ -22,7 +22,7 @@ class Product {
   factory Product.fromJson(Map<String, dynamic> json) {
     var variantsList = json['variants'] as List? ?? [];
     return Product(
-      id: json['id'],
+      id: json['id'] ?? json['product_id'],
       name: json['name'],
       slug: json['slug'],
       description: json['description'] ?? '',

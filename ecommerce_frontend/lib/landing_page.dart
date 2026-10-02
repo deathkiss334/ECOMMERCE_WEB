@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'models/product_model.dart';
+import 'services/api_service.dart';
 
 void main() => runApp(const LandingPage());
 
@@ -67,6 +69,7 @@ class HomePage extends StatefulWidget {
 
 class _HomePageState extends State<HomePage> {
   final PageController _pageController = PageController(viewportFraction: 1.0);
+  List<FoodItem> _foods = foods;
   int _activeSlide = 0;
   int _activeCategory = 0;
   final categories = const [
@@ -111,6 +114,41 @@ class _HomePageState extends State<HomePage> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    _loadProducts();
+  }
+
+  Future<void> _loadProducts() async {
+    try {
+      final products = await ApiService.getProducts();
+      if (!mounted || products.isEmpty) return;
+
+      setState(() {
+        _foods = products.map(_toFoodItem).toList();
+      });
+    } catch (_) {
+      // Keep the bundled catalog available when the API is offline.
+    }
+  }
+
+  FoodItem _toFoodItem(Product product) {
+    final category = product.slug.contains('beverage') || product.slug.contains('drink')
+        ? 'Drinks'
+        : product.slug.contains('snack')
+        ? 'Meryenda'
+        : 'Ulam';
+
+    return FoodItem(
+      product.name,
+      product.description,
+      '₱${product.basePrice.toStringAsFixed(0)}',
+      'assets/assets1.jpg',
+      category,
+    );
+  }
+
+  @override
   void dispose() {
     _pageController.dispose();
     super.dispose();
@@ -121,8 +159,8 @@ class _HomePageState extends State<HomePage> {
     final width = MediaQuery.sizeOf(context).width;
     final compact = width < 700;
     final visibleFoods = _activeCategory == 0
-        ? foods
-        : foods
+      ? _foods
+      : _foods
               .where((f) => f.category == categories[_activeCategory])
               .toList();
 

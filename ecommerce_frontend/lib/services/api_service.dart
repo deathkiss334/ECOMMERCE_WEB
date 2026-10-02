@@ -4,10 +4,10 @@ import '../models/product_model.dart';
 import '../models/order_model.dart';
 
 class ApiService {
-  static String get baseUrl {
-    // 127.0.0.1 works for physical devices (with `adb reverse tcp:8000 tcp:8000`) and Desktop/Web
-    return 'http://127.0.0.1:8000/api';
-  }
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000/api',
+  );
 
   static Future<List<Product>> getProducts() async {
     try {

@@ -19,6 +19,7 @@ class ProductTable extends Model
         'product_quantity',
         'product_type',
         'product_price',
+        'product_image',
     ];
 
     protected $casts = [

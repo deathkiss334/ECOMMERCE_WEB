@@ -3,7 +3,6 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Category;
-use App\Models\Product;
 use App\Models\Order;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\UserController;
@@ -55,24 +54,9 @@ Route::get('/categories', function () {
     return Category::where('is_active', true)->get();
 });
 
-Route::get('/products', function () {
-    return Product::with(['category', 'variants', 'images'])
-        ->where('is_active', true)
-        ->get();
-});
-
-Route::get('/products/featured', function () {
-    return Product::with(['category', 'variants', 'images'])
-        ->where('is_active', true)
-        ->where('is_featured', true)
-        ->get();
-});
-
-Route::get('/products/{slug}', function ($slug) {
-    return Product::with(['category', 'variants', 'images'])
-        ->where('slug', $slug)
-        ->firstOrFail();
-});
+Route::get('/products', [ProductTableController::class, 'catalog']);
+Route::get('/products/featured', [ProductTableController::class, 'catalog']);
+Route::get('/products/{slug}', [ProductTableController::class, 'catalogItem']);
 
 // ── Checkout & GCash Payment Endpoints ───────────────────────────────────────
 Route::post('/checkout', [CheckoutController::class, 'store']);
