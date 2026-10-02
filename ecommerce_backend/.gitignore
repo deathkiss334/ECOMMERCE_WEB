@@ -26,3 +26,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 /storage/app/firebase/*.json
+/php-ext
+/php-build

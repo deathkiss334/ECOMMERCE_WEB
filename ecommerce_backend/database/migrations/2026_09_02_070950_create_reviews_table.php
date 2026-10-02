@@ -11,19 +11,21 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('reviews', function (Blueprint $table) {
-            $table->id('review_id');
-            $table->text('review_desc')->nullable();
-            $table->foreignId('product_id')->constrained('products', 'product_id')->cascadeOnDelete();
-            $table->foreignId('reviewer_id')->nullable()->constrained('users', 'user_id')->cascadeOnDelete();
-            $table->decimal('star_rating', 3, 2)->default(5.00);
-            $table->foreignId('reviewee_id')->nullable()->constrained('users', 'user_id')->nullOnDelete();
-            $table->foreignId('user_id')->nullable()->constrained('users', 'user_id')->cascadeOnDelete();
-            $table->foreignId('order_id')->nullable()->constrained('orders', 'order_id')->nullOnDelete();
-            $table->decimal('rating', 3, 2)->default(5.00);
-            $table->text('comment')->nullable();
-            $table->timestamps();
-        });
+        if (!Schema::hasTable('reviews')) {
+            Schema::create('reviews', function (Blueprint $table) {
+                $table->id('review_id');
+                $table->text('review_desc')->nullable();
+                $table->unsignedBigInteger('product_id');
+                $table->unsignedBigInteger('reviewer_id')->nullable();
+                $table->decimal('star_rating', 3, 2)->default(5.00);
+                $table->unsignedBigInteger('reviewee_id')->nullable();
+                $table->unsignedBigInteger('user_id')->nullable();
+                $table->unsignedBigInteger('order_id')->nullable();
+                $table->decimal('rating', 3, 2)->default(5.00);
+                $table->text('comment')->nullable();
+                $table->timestamps();
+            });
+        }
     }
 
     /**
