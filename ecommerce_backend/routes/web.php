@@ -16,6 +16,7 @@ Route::get('/', function () {
 Route::redirect('/admin', '/admin/orders');
 Route::get('/admin/orders', [OrderController::class, 'index']);
 Route::post('/admin/orders/{id}/status', [OrderController::class, 'updateStatus']);
+Route::post('/admin/orders/{id}/verify-payment', [OrderController::class, 'verifyPayment']);
 
 // Sandbox Payment Proof-of-Concept Portal (Interactive GCash / Maya Simulation)
 Route::get('/sandbox/checkout/{order_number}', function ($order_number) {

@@ -11,6 +11,11 @@ class OrderModel {
   final List<OrderItemModel> items;
   final String paymentMethod;
   final bool isRead;
+  final String? customerName;
+  final String? gcashRefNumber;
+  final String? receiptImageUrl;
+  final String? adminNotes;
+  final String? verifiedAt;
 
   OrderModel({
     required this.id,
@@ -25,6 +30,11 @@ class OrderModel {
     required this.items,
     required this.paymentMethod,
     this.isRead = false,
+    this.customerName,
+    this.gcashRefNumber,
+    this.receiptImageUrl,
+    this.adminNotes,
+    this.verifiedAt,
   });
 
   factory OrderModel.fromJson(Map<String, dynamic> json) {
@@ -33,17 +43,22 @@ class OrderModel {
 
     return OrderModel(
       id: json['id'] ?? 0,
-      orderNumber: json['order_number'] ?? '',
+      orderNumber: json['order_number'] ?? json['orderId'] ?? '',
       status: json['status'] ?? 'pending',
       paymentStatus: json['payment_status'] ?? 'unpaid',
       orderType: json['order_type'] ?? 'delivery',
       deliveryFee: double.tryParse(json['delivery_fee']?.toString() ?? '0') ?? 0.0,
-      totalAmount: double.tryParse(json['total_amount'].toString()) ?? 0.0,
+      totalAmount: double.tryParse((json['total_amount'] ?? json['totalAmount'] ?? '0').toString()) ?? 0.0,
       notes: json['notes'] ?? '',
-      createdAt: json['created_at'] ?? '',
+      createdAt: json['created_at'] ?? json['createdAt'] ?? '',
       items: rawItems.map((i) => OrderItemModel.fromJson(i)).toList(),
-      paymentMethod: latestPayment['payment_method'] ?? 'COD',
+      paymentMethod: latestPayment['payment_method'] ?? json['payment_method'] ?? 'COD',
       isRead: json['is_read'] ?? false,
+      customerName: json['customer_name'] ?? json['customerName'],
+      gcashRefNumber: json['gcash_ref_number'] ?? json['gcashRefNumber'],
+      receiptImageUrl: json['receipt_image_url'] ?? json['receiptImageUrl'],
+      adminNotes: json['admin_notes'] ?? json['adminNotes'],
+      verifiedAt: json['verified_at'] ?? json['verifiedAt'],
     );
   }
 
@@ -60,6 +75,11 @@ class OrderModel {
     List<OrderItemModel>? items,
     String? paymentMethod,
     bool? isRead,
+    String? customerName,
+    String? gcashRefNumber,
+    String? receiptImageUrl,
+    String? adminNotes,
+    String? verifiedAt,
   }) {
     return OrderModel(
       id: id ?? this.id,
@@ -74,6 +94,11 @@ class OrderModel {
       items: items ?? this.items,
       paymentMethod: paymentMethod ?? this.paymentMethod,
       isRead: isRead ?? this.isRead,
+      customerName: customerName ?? this.customerName,
+      gcashRefNumber: gcashRefNumber ?? this.gcashRefNumber,
+      receiptImageUrl: receiptImageUrl ?? this.receiptImageUrl,
+      adminNotes: adminNotes ?? this.adminNotes,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
     );
   }
 

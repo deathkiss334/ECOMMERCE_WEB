@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import '../models/user_model.dart';
-import '../services/firebase_user_service.dart';
-import '../widgets/google_auth_widgets.dart';
+import '../services/auth_api_service.dart';
 
 class SignupPage extends StatefulWidget {
   const SignupPage({super.key});
@@ -13,70 +11,33 @@ class SignupPage extends StatefulWidget {
 class _SignupPageState extends State<SignupPage> {
   final _firstNameCtrl = TextEditingController();
   final _secondNameCtrl = TextEditingController();
-  final _middleNameCtrl = TextEditingController();
-  final _birthdayCtrl = TextEditingController();
-  final _addressCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   bool _isSubmitting = false;
-  bool _isGoogleSubmitting = false;
 
   @override
   void dispose() {
     _firstNameCtrl.dispose();
     _secondNameCtrl.dispose();
-    _middleNameCtrl.dispose();
-    _birthdayCtrl.dispose();
-    _addressCtrl.dispose();
     _phoneCtrl.dispose();
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
   }
 
-  Future<void> _handleGoogleSignup() async {
-    setState(() => _isGoogleSubmitting = true);
-    try {
-      final user = await GoogleAuthFlow.startGoogleSignIn(context);
-      setState(() => _isGoogleSubmitting = false);
-
-      if (user != null && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const GoogleLogoIcon(size: 18),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    'Welcome to DasmaBITES, ${user.firstName}! 🚀',
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                ),
-              ],
-            ),
-            backgroundColor: const Color(0xFF1E88E5),
-          ),
-        );
-        Navigator.pushReplacementNamed(context, '/shop');
-      }
-    } catch (e) {
-      setState(() => _isGoogleSubmitting = false);
-    }
-  }
-
   Future<void> _handleSignup() async {
-    if (_firstNameCtrl.text.trim().isEmpty ||
-        _secondNameCtrl.text.trim().isEmpty ||
-        _addressCtrl.text.trim().isEmpty ||
-        _phoneCtrl.text.trim().isEmpty ||
-        _emailCtrl.text.trim().isEmpty ||
-        _passwordCtrl.text.trim().isEmpty) {
+    final firstName = _firstNameCtrl.text.trim();
+    final secondName = _secondNameCtrl.text.trim();
+    final email = _emailCtrl.text.trim();
+    final password = _passwordCtrl.text.trim();
+    final phone = _phoneCtrl.text.trim();
+
+    if (firstName.isEmpty || secondName.isEmpty || email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Please fill in all required fields'),
+          content: Text('Please fill in Name, Email, and Password'),
           backgroundColor: Colors.red,
         ),
       );
@@ -85,33 +46,37 @@ class _SignupPageState extends State<SignupPage> {
 
     setState(() => _isSubmitting = true);
 
-    final newUser = UserModel(
-      firstName: _firstNameCtrl.text.trim(),
-      secondName: _secondNameCtrl.text.trim(),
-      middleName: _middleNameCtrl.text.trim(),
-      birthday: _birthdayCtrl.text.trim(),
-      address: _addressCtrl.text.trim(),
-      phoneNumber: _phoneCtrl.text.trim(),
-      emailAddress: _emailCtrl.text.trim(),
-      isVerified: true,
-    );
+    try {
+      final fullName = '$firstName $secondName'.trim();
+      final result = await AuthApiService.register(
+        name: fullName,
+        email: email,
+        password: password,
+        phone: phone.isNotEmpty ? phone : null,
+      );
 
-    // Save to Firebase Cloud Firestore
-    await FirebaseUserService.saveUserProfileToFirebase(newUser);
-    FirebaseUserService.setCurrentUser(newUser);
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
 
-    setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Welcome, ${result.user.firstName}! Account registered in SQLite 🛡️'),
+          backgroundColor: Colors.green,
+        ),
+      );
 
-    if (!mounted) return;
+      Navigator.pushReplacementNamed(context, '/shop');
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Account Created Successfully! Please log in to continue. 🎉'),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    Navigator.pushReplacementNamed(context, '/login');
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -160,34 +125,6 @@ class _SignupPageState extends State<SignupPage> {
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 24),
-
-                  // Continue with Google Option
-                  GoogleSignInButton(
-                    onPressed: _handleGoogleSignup,
-                    isLoading: _isGoogleSubmitting,
-                    text: 'Sign up with Google',
-                  ),
-                  const SizedBox(height: 18),
-
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'OR SIGN UP WITH EMAIL',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.w600,
-                            color: Colors.grey.shade600,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
                   Row(
                     children: [
                       Expanded(
@@ -195,30 +132,16 @@ class _SignupPageState extends State<SignupPage> {
                       ),
                       const SizedBox(width: 12),
                       Expanded(
-                        child: _buildTextField('Second Name *', _secondNameCtrl, Icons.person_outline),
+                        child: _buildTextField('Last Name *', _secondNameCtrl, Icons.person_outline),
                       ),
                     ],
                   ),
                   const SizedBox(height: 12),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: _buildTextField('Middle Name (Optional)', _middleNameCtrl, Icons.badge_outlined),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: _buildTextField('Birthday (YYYY-MM-DD)', _birthdayCtrl, Icons.cake_outlined),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-                  _buildTextField('Complete Address *', _addressCtrl, Icons.home_outlined),
-                  const SizedBox(height: 12),
-                  _buildTextField('Phone Number *', _phoneCtrl, Icons.phone_outlined),
+                  _buildTextField('Phone Number', _phoneCtrl, Icons.phone_outlined),
                   const SizedBox(height: 12),
                   _buildTextField('Email Address *', _emailCtrl, Icons.email_outlined),
                   const SizedBox(height: 12),
-                  _buildTextField('Password *', _passwordCtrl, Icons.lock_outline, obscureText: true),
+                  _buildTextField('Password * (min 8 chars, 1 upper, 1 lower, 1 number, 1 special)', _passwordCtrl, Icons.lock_outline, obscureText: true),
                   const SizedBox(height: 24),
                   ElevatedButton(
                     onPressed: _isSubmitting ? null : _handleSignup,

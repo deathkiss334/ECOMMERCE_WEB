@@ -106,4 +106,29 @@ class ApiService {
       return false;
     }
   }
+
+  static Future<Map<String, dynamic>> verifyOrder({
+    required dynamic orderId,
+    required String action,
+    String? notes,
+  }) async {
+    try {
+      final response = await http.patch(
+        Uri.parse('$baseUrl/admin/orders/$orderId/verify'),
+        headers: {'Content-Type': 'application/json', 'Accept': 'application/json'},
+        body: json.encode({
+          'action': action,
+          if (notes != null && notes.isNotEmpty) 'notes': notes,
+        }),
+      );
+      if (response.statusCode == 200) {
+        return json.decode(response.body);
+      } else {
+        throw Exception('Server returned ${response.statusCode}: ${response.body}');
+      }
+    } catch (e) {
+      print('Failed to verify order: $e');
+      rethrow;
+    }
+  }
 }

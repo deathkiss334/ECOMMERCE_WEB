@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
-import '../models/user_model.dart';
-import '../services/firebase_user_service.dart';
-import '../widgets/google_auth_widgets.dart';
+import 'package:google_sign_in/google_sign_in.dart';
+import '../services/auth_api_service.dart';
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -11,33 +10,19 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  static const String _googleClientId =
+      '183407974320-i03p84v2n4320tr17sbsvtubdcdphnor.apps.googleusercontent.com';
+
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
 
   bool _isSubmitting = false;
-  bool _isGoogleSubmitting = false;
 
   @override
   void dispose() {
     _emailCtrl.dispose();
     _passwordCtrl.dispose();
     super.dispose();
-  }
-
-  Future<void> _handleGoogleSignIn() async {
-    setState(() => _isGoogleSubmitting = true);
-
-    try {
-      final user = await GoogleAuthFlow.startGoogleSignIn(context);
-
-      setState(() => _isGoogleSubmitting = false);
-
-      if (user != null && mounted) {
-        Navigator.pushReplacementNamed(context, '/shop');
-      }
-    } catch (e) {
-      setState(() => _isGoogleSubmitting = false);
-    }
   }
 
   Future<void> _handleLogin() async {
@@ -56,58 +41,99 @@ class _LoginPageState extends State<LoginPage> {
 
     setState(() => _isSubmitting = true);
 
-    // Fetch user profile from Firebase or fallback to Verified User / Admin profile
-    UserModel user = await FirebaseUserService.fetchUserProfile(email);
-    if (!user.isVerified || user.emailAddress.isEmpty) {
-      if (email.toLowerCase().contains('admin')) {
-        user = UserModel.adminMock();
+    try {
+      final result = await AuthApiService.login(
+        email: email,
+        password: password,
+      );
+
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+
+      if (result.role == 'admin') {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Welcome, Admin! Accessing System Admin Dashboard 👑'),
+            backgroundColor: Color(0xFF2563EB),
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/admin');
       } else {
-        user = UserModel.defaultVerified();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'Welcome back, ${result.user.firstName}! Logged in as Verified User 🛡️',
+            ),
+            backgroundColor: Colors.green,
+          ),
+        );
+        Navigator.pushReplacementNamed(context, '/shop');
       }
-    }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
 
-    FirebaseUserService.setCurrentUser(user);
-
-    setState(() => _isSubmitting = false);
-
-    if (!mounted) return;
-
-    if (user.isAdmin || email.toLowerCase() == 'admin@example.com' || email.toLowerCase() == 'admin') {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Welcome, Admin! Logged in as System Admin 👑'),
-          backgroundColor: Color(0xFF2563EB),
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
         ),
       );
-      Navigator.pushReplacementNamed(context, '/admin');
-      return;
     }
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          'Welcome back, ${user.firstName}! Logged in as Verified User 🛡️',
-        ),
-        backgroundColor: Colors.green,
-      ),
-    );
-
-    // Navigate to shop instead of popping back to landing page
-    Navigator.pushReplacementNamed(context, '/shop');
   }
 
-  void _handleAdminQuickLogin() {
-    final adminUser = UserModel.adminMock();
-    FirebaseUserService.setCurrentUser(adminUser);
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isSubmitting = true);
 
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Logged in as Mock Admin 👑'),
-        backgroundColor: Color(0xFF2563EB),
-      ),
-    );
+    try {
+      final googleSignIn = GoogleSignIn(
+        clientId: _googleClientId,
+        scopes: ['email', 'profile'],
+      );
 
-    Navigator.pushReplacementNamed(context, '/admin');
+      final GoogleSignInAccount? account = await googleSignIn.signIn();
+      if (account == null) {
+        setState(() => _isSubmitting = false);
+        return; // User cancelled the popup
+      }
+
+      final GoogleSignInAuthentication auth = await account.authentication;
+      final String? token = (auth.idToken != null && auth.idToken!.isNotEmpty)
+          ? auth.idToken
+          : ((auth.accessToken != null && auth.accessToken!.isNotEmpty)
+              ? auth.accessToken
+              : 'demo');
+
+      final result = await AuthApiService.loginWithGoogle(token!);
+
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Welcome, ${result.user.firstName}! Signed in with Google 🛡️',
+          ),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      if (result.role == 'admin') {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else {
+        Navigator.pushReplacementNamed(context, '/shop');
+      }
+    } catch (e) {
+      setState(() => _isSubmitting = false);
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceAll('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   @override
@@ -151,38 +177,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Log in as a Verified User to enjoy benefits',
+                    'Log in with your SQLite account or Google',
                     style: TextStyle(color: Colors.grey, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 24),
-
-                  // Continue with Google Button
-                  GoogleSignInButton(
-                    onPressed: _handleGoogleSignIn,
-                    isLoading: _isGoogleSubmitting,
-                  ),
-                  const SizedBox(height: 18),
-
-                  // Divider
-                  Row(
-                    children: [
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 10),
-                        child: Text(
-                          'OR LOG IN WITH EMAIL',
-                          style: TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey.shade500,
-                          ),
-                        ),
-                      ),
-                      Expanded(child: Divider(color: Colors.grey.shade300)),
-                    ],
-                  ),
-                  const SizedBox(height: 18),
+                  const SizedBox(height: 28),
                   TextField(
                     controller: _emailCtrl,
                     decoration: InputDecoration(
@@ -241,24 +240,49 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: const [
+                      Expanded(child: Divider()),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 12),
+                        child: Text(
+                          'OR',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: Colors.grey,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                      Expanded(child: Divider()),
+                    ],
+                  ),
+                  const SizedBox(height: 16),
                   OutlinedButton.icon(
-                    onPressed: _isSubmitting ? null : _handleAdminQuickLogin,
-                    icon: const Icon(Icons.admin_panel_settings, size: 18, color: Color(0xFF2563EB)),
+                    onPressed: _isSubmitting ? null : _handleGoogleSignIn,
+                    icon: Image.network(
+                      'https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg',
+                      width: 20,
+                      height: 20,
+                      errorBuilder: (context, error, stackTrace) =>
+                          const Icon(Icons.g_mobiledata, size: 24, color: Colors.red),
+                    ),
                     label: const Text(
-                      'Log in as Admin (Mock Account)',
+                      'Continue with Google',
                       style: TextStyle(
-                        fontSize: 13,
+                        fontSize: 14,
                         fontWeight: FontWeight.bold,
-                        color: Color(0xFF2563EB),
+                        color: Colors.black87,
                       ),
                     ),
                     style: OutlinedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 12),
-                      side: const BorderSide(color: Color(0xFF93C5FD)),
+                      padding: const EdgeInsets.symmetric(vertical: 13),
+                      side: BorderSide(color: Colors.grey.shade300),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(8),
                       ),
+                      backgroundColor: Colors.white,
                     ),
                   ),
                   const SizedBox(height: 16),

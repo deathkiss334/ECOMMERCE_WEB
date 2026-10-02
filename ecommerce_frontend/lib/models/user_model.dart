@@ -8,6 +8,7 @@ class UserModel {
   final String emailAddress;
   final bool isVerified;
   final bool isAdmin;
+  final String? authProvider;
 
   UserModel({
     required this.firstName,
@@ -19,6 +20,7 @@ class UserModel {
     required this.emailAddress,
     this.isVerified = true,
     this.isAdmin = false,
+    this.authProvider = 'local',
   });
 
   /// Factory to construct empty Guest account profile
@@ -33,6 +35,7 @@ class UserModel {
       emailAddress: '',
       isVerified: false,
       isAdmin: false,
+      authProvider: null,
     );
   }
 
@@ -48,6 +51,7 @@ class UserModel {
       emailAddress: 'juan.delacruz@example.com',
       isVerified: true,
       isAdmin: false,
+      authProvider: 'local',
     );
   }
 
@@ -63,6 +67,29 @@ class UserModel {
       emailAddress: 'admin@example.com',
       isVerified: true,
       isAdmin: true,
+      authProvider: 'local',
+    );
+  }
+
+  /// Parse user profile returned from Laravel SQLite Auth API
+  factory UserModel.fromBackendJson(Map<String, dynamic> json) {
+    final name = (json['name'] ?? '').toString().trim();
+    final parts = name.split(' ');
+    final first = parts.isNotEmpty ? parts.first : '';
+    final last = parts.length > 1 ? parts.sublist(1).join(' ') : '';
+    final role = json['role'] ?? 'customer';
+
+    return UserModel(
+      firstName: first,
+      secondName: last,
+      middleName: '',
+      birthday: '',
+      address: '',
+      phoneNumber: json['phone'] ?? '',
+      emailAddress: json['email'] ?? '',
+      isVerified: true,
+      isAdmin: role == 'admin',
+      authProvider: json['auth_provider'] ?? 'local',
     );
   }
 
@@ -83,6 +110,7 @@ class UserModel {
       emailAddress: json['email_address'] ?? '',
       isVerified: json['is_verified'] ?? true,
       isAdmin: json['is_admin'] ?? false,
+      authProvider: json['auth_provider'] ?? 'local',
     );
   }
 
@@ -97,6 +125,7 @@ class UserModel {
       'email_address': emailAddress,
       'is_verified': isVerified,
       'is_admin': isAdmin,
+      'auth_provider': authProvider,
     };
   }
 }

@@ -62,6 +62,11 @@ class FirebaseService
                         'values' => $itemsArray
                     ]
                 ],
+                'customer_name' => ['stringValue' => (string)($order->customer_name ?? '')],
+                'gcash_ref_number' => ['stringValue' => (string)($order->gcash_ref_number ?? '')],
+                'receipt_image_url' => ['stringValue' => (string)($order->receipt_image_url ?? '')],
+                'admin_notes' => ['stringValue' => (string)($order->admin_notes ?? '')],
+                'verified_at' => ['stringValue' => (string)($order->verified_at ? $order->verified_at->toIso8601String() : '')],
                 'updated_at' => ['stringValue' => now()->toIso8601String()],
             ];
 

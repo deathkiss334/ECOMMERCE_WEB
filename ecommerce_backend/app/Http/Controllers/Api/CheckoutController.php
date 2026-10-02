@@ -58,11 +58,14 @@ class CheckoutController extends Controller
                 ];
             }
 
-            // 2. Create the Order
+            $userId = auth('sanctum')->id() ?? 1;
+
+            // 2. Create Order in PAYMENT_PENDING status
+            $orderNumber = 'DASMA-' . strtoupper(Str::random(6));
             $order = Order::create([
-                'order_number' => 'ORD-' . strtoupper(Str::random(8)),
-                'user_id' => 1, // Defaulting to our seeded Demo User
-                'status' => 'pending',
+                'order_number' => $orderNumber,
+                'user_id' => $userId,
+                'status' => $validated['payment_method'] === 'cod' ? 'preparing' : 'PAYMENT_PENDING',
                 'payment_status' => 'unpaid',
                 'subtotal' => $totalAmount,
                 'total_amount' => $totalAmount, 
@@ -75,43 +78,51 @@ class CheckoutController extends Controller
                 OrderItem::create($oi);
             }
 
-            // 4. Create Payment Ledger
+            // 4. Create Initial Payment Record
             $payment = Payment::create([
                 'id' => (string) Str::uuid(),
                 'order_id' => $order->id,
                 'payment_method' => $validated['payment_method'],
-                'gateway' => $validated['payment_method'] === 'cod' ? 'cod' : 'qr_payment',
+                'gateway' => $validated['payment_method'] === 'cod' ? 'cod' : 'gcash_manual',
                 'amount' => $totalAmount,
                 'status' => 'pending',
             ]);
 
-            // Synchronize newly created order to Firebase
-            FirebaseService::syncOrder($order);
-
             // 5A. Handle Cash On Delivery
             if ($validated['payment_method'] === 'cod') {
-                $order->update(['status' => 'preparing']); // Immediately proceed with COD
                 FirebaseService::syncOrder($order);
                 return response()->json([
                     'success' => true,
+                    'orderId' => $order->order_number,
                     'order_number' => $order->order_number,
-                    'total_amount' => $totalAmount,
-                    'message' => 'Order placed successfully via Cash on Delivery.'
+                    'totalAmount' => (float) $totalAmount,
+                    'total_amount' => (float) $totalAmount,
+                    'payment_method' => 'cod',
+                    'status' => 'PREPARING',
+                    'payment_status' => 'unpaid',
+                    'message' => 'Order placed successfully via Cash on Delivery. Preparing now.'
                 ]);
             }
 
-            // 5B. Dynamic QR Code Payment (GCash, Maya, Any Bank App)
-            $qrData = "ORDER:{$order->order_number}|PHP:{$totalAmount}|MERCHANT:FILIPINO-CUISINE-DASMARINAS";
-            $qrImageUrl = "https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=" . urlencode($qrData);
+            // 5B. Manual GCash QR Payment
+            $qrImageUrl = asset('assets/gcash_qr.png');
+
+            FirebaseService::syncOrder($order);
 
             return response()->json([
                 'success' => true,
+                'orderId' => $order->order_number,
                 'order_number' => $order->order_number,
-                'total_amount' => (float)$totalAmount,
+                'totalAmount' => (float) $totalAmount,
+                'total_amount' => (float) $totalAmount,
                 'payment_method' => $validated['payment_method'],
+                'account_name' => 'R** SA***L M.',
+                'account_number' => '+63 985 564 4297',
                 'qr_image_url' => $qrImageUrl,
-                'message' => 'Scan QR Code using GCash, Maya, or any mobile banking app.'
-            ]);
+                'status' => 'PAYMENT_PENDING',
+                'payment_status' => 'unpaid',
+                'message' => 'Please scan GCash QR code, send exactly ₱' . number_format($totalAmount, 2) . ', and upload receipt proof.'
+            ], 200);
         });
     }
 }

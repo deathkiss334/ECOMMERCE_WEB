@@ -20,77 +20,46 @@ class FirebaseUserService {
     _cachedUser = user;
   }
 
-  /// Check if a user with this email has existing profile credentials in Firebase or users_table.
-  /// Returns null if user has never completed registration or credentials.
-  static Future<UserModel?> findUserProfile(String email) async {
-    final cleanEmail = email.toLowerCase().trim();
-    if (cleanEmail.isEmpty) return null;
-
-    if (cleanEmail == 'admin@example.com' || cleanEmail == 'admin') {
-      return UserModel.adminMock();
-    }
-
-    // 1. Check Cloud Firestore /users/{docId}
-    if (FirebaseOrderService.isFirebaseConfigured) {
-      try {
-        final docId = cleanEmail.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
-        final url = Uri.parse(
-          'https://firestore.googleapis.com/v1/projects/${FirebaseOrderService.firebaseProjectId}/databases/(default)/documents/users/$docId',
-        );
-        final response = await http.get(url);
-
-        if (response.statusCode == 200) {
-          final Map<String, dynamic> data = json.decode(response.body);
-          final fields = data['fields'] ?? {};
-          final phone = fields['phone_number']?['stringValue'] ?? '';
-          final firstName = fields['first_name']?['stringValue'] ?? '';
-
-          if (phone.isNotEmpty || firstName.isNotEmpty) {
-            final user = UserModel(
-              firstName: firstName,
-              secondName: fields['second_name']?['stringValue'] ?? fields['last_name']?['stringValue'] ?? '',
-              middleName: fields['middle_name']?['stringValue'] ?? '',
-              birthday: fields['birthday']?['stringValue'] ?? '',
-              address: fields['address']?['stringValue'] ?? '',
-              phoneNumber: phone,
-              emailAddress: fields['email_address']?['stringValue'] ?? cleanEmail,
-              isVerified: fields['is_verified']?['booleanValue'] ?? true,
-            );
-            return user;
-          }
-        }
-      } catch (_) {}
-    }
-
-    // 2. Check users_table records in Firestore & Laravel DB
-    try {
-      final users = await FirebaseUsersTableService.fetchUsersFromFirestore();
-      for (final u in users) {
-        if (u.emailAddress.toLowerCase().trim() == cleanEmail && u.phoneNumber.isNotEmpty) {
-          return UserModel(
-            firstName: u.firstName,
-            secondName: u.lastName,
-            middleName: u.middleName,
-            birthday: u.birthday,
-            address: u.address,
-            phoneNumber: u.phoneNumber,
-            emailAddress: u.emailAddress,
-            isVerified: true,
-          );
-        }
-      }
-    } catch (_) {}
-
-    return null;
-  }
-
   /// Fetch Verified User profile from Cloud Firestore REST API
   static Future<UserModel> fetchUserProfile(String email) async {
-    final existing = await findUserProfile(email);
-    if (existing != null) {
-      _cachedUser = existing;
-      return existing;
+    if (email.toLowerCase() == 'admin@example.com' || email.toLowerCase() == 'admin') {
+      final adminUser = UserModel.adminMock();
+      _cachedUser = adminUser;
+      return adminUser;
     }
+
+    if (!FirebaseOrderService.isFirebaseConfigured) {
+      final defaultUser = UserModel.defaultVerified();
+      _cachedUser = defaultUser;
+      return defaultUser;
+    }
+
+    try {
+      final docId = email.replaceAll(RegExp(r'[^a-zA-Z0-9]'), '_');
+      final url = Uri.parse(
+        'https://firestore.googleapis.com/v1/projects/${FirebaseOrderService.firebaseProjectId}/databases/(default)/documents/users/$docId',
+      );
+      final response = await http.get(url);
+
+      if (response.statusCode == 200) {
+        final Map<String, dynamic> data = json.decode(response.body);
+        final fields = data['fields'] ?? {};
+
+        final user = UserModel(
+          firstName: fields['first_name']?['stringValue'] ?? '',
+          secondName: fields['second_name']?['stringValue'] ?? fields['last_name']?['stringValue'] ?? '',
+          middleName: fields['middle_name']?['stringValue'] ?? '',
+          birthday: fields['birthday']?['stringValue'] ?? '',
+          address: fields['address']?['stringValue'] ?? '',
+          phoneNumber: fields['phone_number']?['stringValue'] ?? '',
+          emailAddress: fields['email_address']?['stringValue'] ?? '',
+          isVerified: fields['is_verified']?['booleanValue'] ?? true,
+        );
+
+        _cachedUser = user;
+        return user;
+      }
+    } catch (_) {}
 
     final defaultUser = UserModel.defaultVerified();
     _cachedUser = defaultUser;

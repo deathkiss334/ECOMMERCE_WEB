@@ -102,6 +102,181 @@ class _OrdersViewState extends State<OrdersView> {
     }
   }
 
+  void _showReceiptDialog(BuildContext context, String receiptUrl, String orderNumber) {
+    final String fullUrl = receiptUrl.startsWith('http')
+        ? receiptUrl
+        : 'http://127.0.0.1:8000$receiptUrl';
+
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: Container(
+          constraints: const BoxConstraints(maxWidth: 550),
+          padding: const EdgeInsets.all(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Row(
+                    children: [
+                      const Icon(Icons.receipt_long, color: Color(0xFF005CE6)),
+                      const SizedBox(width: 8),
+                      Text(
+                        'GCash Receipt Proof #$orderNumber',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                      ),
+                    ],
+                  ),
+                  IconButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    icon: const Icon(Icons.close, color: Colors.grey),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxHeight: 500),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: InteractiveViewer(
+                    panEnabled: true,
+                    minScale: 0.8,
+                    maxScale: 4.0,
+                    child: Image.network(
+                      fullUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (c, child, progress) {
+                        if (progress == null) return child;
+                        return const Center(
+                          child: Padding(
+                            padding: EdgeInsets.all(40.0),
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (c, err, stack) => Container(
+                        padding: const EdgeInsets.all(32),
+                        color: const Color(0xFFF8FAFC),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Icon(Icons.broken_image, size: 48, color: Colors.grey),
+                            const SizedBox(height: 8),
+                            Text('Receipt image could not be loaded.\nURL: $fullUrl', textAlign: TextAlign.center, style: const TextStyle(fontSize: 11, color: Colors.grey)),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              const Text('Tip: Pinch or scroll inside image to zoom in on transaction details', style: TextStyle(fontSize: 11, color: Color(0xFF64748B))),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _handleVerifyAction(OrderModel order, String action) async {
+    String? rejectionReason;
+    if (action == 'REJECT') {
+      final reasonController = TextEditingController();
+      final confirmed = await showDialog<bool>(
+        context: context,
+        builder: (ctx) => AlertDialog(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: Row(
+            children: const [
+              Icon(Icons.cancel_outlined, color: Color(0xFFDC2626)),
+              SizedBox(width: 8),
+              Text('Reject GCash Receipt Proof', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Specify rejection reason for Order #${order.orderNumber}:', style: const TextStyle(fontSize: 13)),
+              const SizedBox(height: 10),
+              TextField(
+                controller: reasonController,
+                decoration: const InputDecoration(
+                  hintText: 'e.g. Blurred receipt, incorrect amount, mismatched reference number',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.all(12),
+                ),
+                maxLines: 2,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, false),
+              child: const Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.pop(ctx, true),
+              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFDC2626), foregroundColor: Colors.white),
+              child: const Text('Confirm Rejection'),
+            ),
+          ],
+        ),
+      );
+      if (confirmed != true) return;
+      rejectionReason = reasonController.text.trim();
+    }
+
+    setState(() => _updatingOrderId = order.orderNumber);
+
+    try {
+      final res = await ApiService.verifyOrder(
+        orderId: order.orderNumber,
+        action: action,
+        notes: rejectionReason,
+      );
+
+      if (mounted) {
+        final newStatus = action == 'APPROVE' ? 'PAID' : 'REJECTED';
+        final newPaymentStatus = action == 'APPROVE' ? 'paid' : 'rejected';
+        setState(() {
+          final idx = _currentOrders.indexWhere((o) => o.id == order.id || o.orderNumber == order.orderNumber);
+          if (idx != -1) {
+            _currentOrders[idx] = _currentOrders[idx].copyWith(
+              status: newStatus,
+              paymentStatus: newPaymentStatus,
+              adminNotes: rejectionReason,
+              isRead: true,
+            );
+          }
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(res['message'] ?? (action == 'APPROVE' ? 'Order verified and accepted!' : 'Order rejected.')),
+            backgroundColor: action == 'APPROVE' ? const Color(0xFF10B981) : const Color(0xFFDC2626),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Failed to verify order: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _updatingOrderId = null);
+    }
+  }
+
   List<OrderModel> get _filteredOrders {
     return _currentOrders.where((order) {
       final matchesSearch = order.orderNumber.toLowerCase().contains(_searchQuery.toLowerCase()) ||
@@ -115,6 +290,8 @@ class _OrdersViewState extends State<OrdersView> {
       switch (_selectedFilter) {
         case 'pending':
           return order.status.toLowerCase() == 'pending';
+        case 'awaiting_verification':
+          return order.status.toUpperCase() == 'AWAITING_VERIFICATION' || order.paymentStatus.toLowerCase() == 'awaiting_verification';
         case 'preparing':
           return order.status.toLowerCase() == 'preparing';
         case 'dispatched':
@@ -135,6 +312,7 @@ class _OrdersViewState extends State<OrdersView> {
   @override
   Widget build(BuildContext context) {
     final pendingCount = _currentOrders.where((o) => o.status.toLowerCase() == 'pending').length;
+    final awaitingCount = _currentOrders.where((o) => o.status.toUpperCase() == 'AWAITING_VERIFICATION' || o.paymentStatus.toLowerCase() == 'awaiting_verification').length;
     final overdueCount = _currentOrders.where((o) => o.isOverdue).length;
     final preparingCount = _currentOrders.where((o) => o.status.toLowerCase() == 'preparing').length;
     final unreadCount = _currentOrders.where((o) => !o.isRead && !_readOrderNumbers.contains(o.orderNumber)).length;
@@ -336,6 +514,8 @@ class _OrdersViewState extends State<OrdersView> {
                       child: Row(
                         children: [
                           _buildFilterChip('all', 'All (${_currentOrders.length})'),
+                          if (awaitingCount > 0)
+                            _buildFilterChip('awaiting_verification', '🔍 Awaiting GCash ($awaitingCount)', color: const Color(0xFF005CE6)),
                           _buildFilterChip('pending', 'Pending ($pendingCount)'),
                           if (overdueCount > 0)
                             _buildFilterChip('overdue', '⚠️ Overdue ($overdueCount)', color: Colors.red),
@@ -652,6 +832,151 @@ class _OrdersViewState extends State<OrdersView> {
                 const SizedBox(height: 16),
               ],
 
+              // GCash Verification Banner for Admin
+              if (order.status.toUpperCase() == 'AWAITING_VERIFICATION' ||
+                  order.receiptImageUrl != null ||
+                  order.gcashRefNumber != null ||
+                  (order.paymentMethod.toLowerCase() == 'gcash' && order.status.toUpperCase() == 'PAYMENT_PENDING')) ...[
+                Container(
+                  width: double.infinity,
+                  margin: const EdgeInsets.only(bottom: 16),
+                  padding: const EdgeInsets.all(14),
+                  decoration: BoxDecoration(
+                    color: order.status.toUpperCase() == 'PAID'
+                        ? const Color(0xFFECFDF5)
+                        : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                            ? const Color(0xFFEFF6FF)
+                            : const Color(0xFFFFFBEB)),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: order.status.toUpperCase() == 'PAID'
+                          ? const Color(0xFFA7F3D0)
+                          : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                              ? const Color(0xFF93C5FD)
+                              : const Color(0xFFFDE68A)),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                order.status.toUpperCase() == 'PAID'
+                                    ? Icons.check_circle
+                                    : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                                        ? Icons.verified_user
+                                        : Icons.warning_amber_rounded),
+                                size: 18,
+                                color: order.status.toUpperCase() == 'PAID'
+                                    ? const Color(0xFF059669)
+                                    : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                                        ? const Color(0xFF005CE6)
+                                        : const Color(0xFFD97706)),
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                order.status.toUpperCase() == 'PAID'
+                                    ? 'GCash Payment Verified ✓'
+                                    : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                                        ? 'GCash Proof Awaiting Verification'
+                                        : 'GCash Payment Pending - DO NOT COOK'),
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 13,
+                                  color: order.status.toUpperCase() == 'PAID'
+                                      ? const Color(0xFF065F46)
+                                      : (order.status.toUpperCase() == 'AWAITING_VERIFICATION'
+                                          ? const Color(0xFF1E3A8A)
+                                          : const Color(0xFF92400E)),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (order.gcashRefNumber != null && order.gcashRefNumber!.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: const Color(0xFFCBD5E1)),
+                              ),
+                              child: Text(
+                                'Ref: ${order.gcashRefNumber}',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF1E293B)),
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (order.customerName != null && order.customerName!.isNotEmpty)
+                                  Text('Customer Name: ${order.customerName}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: Color(0xFF334155))),
+                                Text('Exact Total Due: ₱${order.totalAmount.toStringAsFixed(2)}', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF005CE6))),
+                                if (order.adminNotes != null && order.adminNotes!.isNotEmpty)
+                                  Text('Admin Notes: ${order.adminNotes}', style: const TextStyle(fontSize: 11, color: Color(0xFF64748B), fontStyle: FontStyle.italic)),
+                              ],
+                            ),
+                          ),
+                          if (order.receiptImageUrl != null && order.receiptImageUrl!.isNotEmpty) ...[
+                            ElevatedButton.icon(
+                              onPressed: () => _showReceiptDialog(context, order.receiptImageUrl!, order.orderNumber),
+                              icon: const Icon(Icons.remove_red_eye, size: 14),
+                              label: const Text('View Receipt Proof', style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF005CE6),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                      // Action buttons: Verify & Accept or Reject
+                      if (order.status.toUpperCase() == 'AWAITING_VERIFICATION') ...[
+                        const Divider(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.end,
+                          children: [
+                            OutlinedButton.icon(
+                              onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'REJECT'),
+                              icon: const Icon(Icons.close, size: 14, color: Color(0xFFDC2626)),
+                              label: const Text('Reject', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFFDC2626))),
+                              style: OutlinedButton.styleFrom(
+                                side: const BorderSide(color: Color(0xFFF87171)),
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            ElevatedButton.icon(
+                              onPressed: isUpdating ? null : () => _handleVerifyAction(order, 'APPROVE'),
+                              icon: const Icon(Icons.check, size: 14),
+                              label: const Text('Verify & Accept', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: const Color(0xFF059669),
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+
               // Current Status Pill & Action Buttons Row
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -806,6 +1131,22 @@ class _OrdersViewState extends State<OrdersView> {
     Color fg = const Color(0xFFD97706);
 
     switch (statusKey.toLowerCase()) {
+      case 'awaiting_verification':
+        bg = const Color(0xFFEFF6FF);
+        fg = const Color(0xFF1D4ED8);
+        break;
+      case 'paid':
+        bg = const Color(0xFFD1FAE5);
+        fg = const Color(0xFF047857);
+        break;
+      case 'payment_pending':
+        bg = const Color(0xFFFEF3C7);
+        fg = const Color(0xFFB45309);
+        break;
+      case 'rejected':
+        bg = const Color(0xFFFEE2E2);
+        fg = const Color(0xFFB91C1C);
+        break;
       case 'preparing':
         bg = const Color(0xFFDBEAFE);
         fg = const Color(0xFF1D4ED8);
