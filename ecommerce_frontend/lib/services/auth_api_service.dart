@@ -16,7 +16,10 @@ class AuthResult {
 }
 
 class AuthApiService {
-  static String get baseUrl => 'http://127.0.0.1:8000/api';
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://127.0.0.1:8000/api',
+  );
 
   static String? _authToken;
 
